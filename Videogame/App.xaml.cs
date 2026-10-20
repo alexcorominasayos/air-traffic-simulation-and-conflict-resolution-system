@@ -9,7 +9,7 @@ using System.Windows;
 namespace Videogame
 {
     /// <summary>
-    /// Lógica de interacción para App.xaml
+    /// Entry point of the mini-game when it is run on its own (it can also be opened from the main menu).
     /// </summary>
     public partial class App : Application
     {

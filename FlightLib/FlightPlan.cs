@@ -1,338 +1,272 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
 
 namespace FlightLib
 {
+    /// <summary>
+    /// A single aircraft flying in a straight line from an initial position to a final position
+    /// at a constant speed.
+    /// </summary>
+    /// <remarks>
+    /// Speed is expressed in canvas units per minute, while simulation time is expressed in
+    /// seconds. That is why <see cref="Move"/> divides by <see cref="SecondsPerMinute"/>.
+    /// </remarks>
     public class FlightPlan
     {
-        // Atributos
+        /// <summary>Converts the elapsed time (seconds) to the speed's time unit (minutes).</summary>
+        private const double SecondsPerMinute = 60;
 
-        string id; // identificador
-        Position initialPosition; // posicion inicial
-        Position currentPosition; // posicion actual
-        Position finalPosition; // posicion final
-        double velocidad;
-        int combustible;
+        /// <summary>How much the speed is reduced on every attempt when resolving a conflict.</summary>
+        private const double SpeedReductionStep = 0.1;
 
-        // Constructures
-        public FlightPlan(string id, double ipx, double ipy, double cpx, double cpy, double fpx, double fpy, double velocidad, int combustible)
+        /// <summary>Flight identifier (transponder / call sign). The first three letters identify the airline.</summary>
+        public string Id { get; }
+
+        /// <summary>Where the flight starts its route.</summary>
+        public Position InitialPosition { get; }
+
+        /// <summary>Where the flight is right now.</summary>
+        public Position CurrentPosition { get; private set; }
+
+        /// <summary>Where the flight ends its route.</summary>
+        public Position FinalPosition { get; }
+
+        /// <summary>Ground speed, in canvas units per minute.</summary>
+        public double Speed { get; set; }
+
+        /// <summary>Remaining fuel units.</summary>
+        public int Fuel { get; set; }
+
+        /// <summary>
+        /// Creates a flight plan.
+        /// </summary>
+        /// <param name="id">Flight identifier (transponder / call sign).</param>
+        /// <param name="initialX">X coordinate where the route starts.</param>
+        /// <param name="initialY">Y coordinate where the route starts.</param>
+        /// <param name="currentX">X coordinate where the aircraft is now.</param>
+        /// <param name="currentY">Y coordinate where the aircraft is now.</param>
+        /// <param name="finalX">X coordinate where the route ends.</param>
+        /// <param name="finalY">Y coordinate where the route ends.</param>
+        /// <param name="speed">Ground speed, in canvas units per minute.</param>
+        /// <param name="fuel">Initial fuel units.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
+        public FlightPlan(string id, double initialX, double initialY, double currentX, double currentY,
+                          double finalX, double finalY, double speed, int fuel)
         {
-            this.id = id;
-            this.initialPosition = new Position(ipx, ipy);
-            this.currentPosition = new Position(cpx, cpy);
-            this.finalPosition = new Position(fpx, fpy);
-            this.velocidad = velocidad;
-            this.combustible = combustible;
-        }
-        public FlightPlan()
-        {
-
-        }
-
-        // Metodos
-        public void setComb(int  combustible)
-        { this.combustible = combustible; }
-        public int getComb()
-        { return this.combustible; }
-
-        public void SetInitialPosition(double ipx, double ipy)
-        { this.initialPosition = new Position(ipx, ipy); }
-        public Position GetInitialPosition()
-        { return this.initialPosition; }
-
-        public void SetId(string id)
-        { this.id = id; }
-        public string getId()
-        { return this.id; }
-
-        public void SetCurrentPosition(double cpx, double cpy)
-        { this.currentPosition = new Position(cpx, cpy); }
-        public Position GetCurrentPosition()
-        { return this.currentPosition; }
-
-        public void SetFinalPosition(double fpx, double fpy)
-        { this.finalPosition = new Position(fpx, fpy); }
-        public Position GetfinalPosition()
-        { return this.finalPosition; }
-
-        public void SetVelocidad(double velocidad)
-        { this.velocidad = velocidad; }
-        public double GetVelocidad()
-        { return this.velocidad; }
-
-        public void Mover(double tiempo)
-        // Mueve el vuelo a la posición correspondiente a viajar durante el tiempo que se recibe como parámetro
-        {
-            //Calculamos la distancia recorrida en el tiempo dado
-            double distancia = tiempo * this.velocidad / 60;
-
-            //Calculamos las razones trigonométricas
-            double hipotenusa = Math.Sqrt((finalPosition.GetX() - currentPosition.GetX()) * (finalPosition.GetX() - currentPosition.GetX()) + (finalPosition.GetY() - currentPosition.GetY()) * (finalPosition.GetY() - currentPosition.GetY()));
-            double coseno = (finalPosition.GetX() - currentPosition.GetX()) / hipotenusa;
-            double seno = (finalPosition.GetY() - currentPosition.GetY()) / hipotenusa;
-
-            //Caculamos la nueva posición del vuelo
-            double x = currentPosition.GetX() + distancia * coseno;
-            double y = currentPosition.GetY() + distancia * seno;
-
-            Position nextPosition = new Position(x, y);
-
-            if (currentPosition.Distancia(nextPosition) < hipotenusa)
-                currentPosition = nextPosition;
-            else
-                currentPosition = finalPosition;
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            InitialPosition = new Position(initialX, initialY);
+            CurrentPosition = new Position(currentX, currentY);
+            FinalPosition = new Position(finalX, finalY);
+            Speed = speed;
+            Fuel = fuel;
         }
 
+        /// <summary>
+        /// Returns an independent copy of this flight plan.
+        /// </summary>
+        /// <remarks>
+        /// A shallow copy is enough because <see cref="Position"/> and <see cref="string"/>
+        /// are immutable: moving the copy replaces its own <see cref="CurrentPosition"/>
+        /// reference and never affects the original.
+        /// </remarks>
+        public FlightPlan Clone()
+        {
+            return (FlightPlan)MemberwiseClone();
+        }
+
+        /// <summary>
+        /// Advances the aircraft along its route for the given amount of time.
+        /// The aircraft never overshoots its destination: if it would, it stops on it.
+        /// </summary>
+        /// <param name="elapsedSeconds">Simulated time to advance, in seconds.</param>
+        public void Move(double elapsedSeconds)
+        {
+            double distanceToTravel = elapsedSeconds * Speed / SecondsPerMinute;
+            double remainingDistance = CurrentPosition.DistanceTo(FinalPosition);
+
+            // Also covers the "already at destination" case, where there is no direction to follow.
+            if (Math.Abs(distanceToTravel) >= remainingDistance)
+            {
+                CurrentPosition = FinalPosition;
+                return;
+            }
+
+            double directionX = (FinalPosition.X - CurrentPosition.X) / remainingDistance;
+            double directionY = (FinalPosition.Y - CurrentPosition.Y) / remainingDistance;
+            CurrentPosition = new Position(
+                CurrentPosition.X + distanceToTravel * directionX,
+                CurrentPosition.Y + distanceToTravel * directionY);
+        }
+
+        /// <summary>Returns true when the aircraft is on its final position.</summary>
         public bool HasArrived()
         {
-            bool resultado = false;
-            if (currentPosition == finalPosition)
-                resultado = true;
-            return resultado;
+            return CurrentPosition.HasSameCoordinatesAs(FinalPosition);
         }
 
-
-        public bool Conflicto(FlightPlan b, double distanciaSeguridad)
+        /// <summary>Puts the aircraft back at the start of its route.</summary>
+        public void ResetToInitialPosition()
         {
-            bool conflicto = false;
-
-            if (this.currentPosition.Distancia(b.currentPosition) < distanciaSeguridad)
-                conflicto = true;
-
-            return conflicto;
+            CurrentPosition = InitialPosition;
         }
 
-        public double DistanciaEntreVuelos(FlightPlan a, FlightPlan b)
+        /// <summary>
+        /// Predicts whether this flight and <paramref name="other"/> will, at any moment of their
+        /// routes, be closer to each other than <paramref name="safetyDistance"/>.
+        /// </summary>
+        /// <param name="other">The other flight.</param>
+        /// <param name="safetyDistance">Minimum allowed separation, in canvas units.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+        public bool WillConflictWith(FlightPlan other, double safetyDistance)
         {
-            double distancia = Math.Sqrt(Math.Abs(((Math.Abs(a.currentPosition.GetX() - b.GetCurrentPosition().GetX()) * Math.Abs(a.currentPosition.GetX() - b.GetCurrentPosition().GetX())) + (Math.Abs(a.currentPosition.GetY() - b.GetCurrentPosition().GetY()) * Math.Abs(a.currentPosition.GetY() - b.GetCurrentPosition().GetX())))));
-            return distancia;
+            return CalculateMinimumSeparation(other) < safetyDistance;
         }
 
-        public Position Restart()
+        /// <summary>
+        /// Calculates the smallest distance between this flight and <paramref name="other"/>
+        /// over their whole routes, assuming both take off at the same time from their initial
+        /// positions and each one stops when it reaches its destination.
+        /// </summary>
+        /// <remarks>
+        /// The flights' motion is split in two phases:
+        /// <list type="number">
+        /// <item>Both aircraft are flying. Their relative position changes linearly, so the
+        /// closest approach has a closed-form time. If that time falls outside this phase, the
+        /// minimum of the phase is at one of its ends (both at the start, or both at the end).</item>
+        /// <item>The faster aircraft has landed and only the slower one keeps flying. The closest
+        /// approach is then the perpendicular projection of the parked aircraft on the moving
+        /// aircraft's route, but only if it happens inside this phase.</item>
+        /// </list>
+        /// The result is the smallest distance found in either phase.
+        /// </remarks>
+        /// <param name="other">The other flight.</param>
+        /// <returns>The minimum separation, in canvas units.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+        public double CalculateMinimumSeparation(FlightPlan other)
         {
-            double x = this.initialPosition.GetX();
-            double y = this.initialPosition.GetY();
-            this.SetCurrentPosition(x, y);
-            return currentPosition;
+            if (other == null)
+                throw new ArgumentNullException(nameof(other));
+
+            (double X, double Y) thisVelocity = GetVelocityVector();
+            (double X, double Y) otherVelocity = other.GetVelocityVector();
+
+            double offsetX = InitialPosition.X - other.InitialPosition.X;
+            double offsetY = InitialPosition.Y - other.InitialPosition.Y;
+            double relativeVelocityX = thisVelocity.X - otherVelocity.X;
+            double relativeVelocityY = thisVelocity.Y - otherVelocity.Y;
+
+            // Same direction and same speed: the separation never changes.
+            if (relativeVelocityX == 0 && relativeVelocityY == 0)
+                return InitialPosition.DistanceTo(other.InitialPosition);
+
+            double thisFlightTime = GetTimeToCompleteRoute();
+            double otherFlightTime = other.GetTimeToCompleteRoute();
+            bool thisArrivesFirst = thisFlightTime <= otherFlightTime;
+            double firstArrivalTime = Math.Min(thisFlightTime, otherFlightTime);
+            double lastArrivalTime = Math.Max(thisFlightTime, otherFlightTime);
+
+            double separationWhileBothFly = CalculateMinimumSeparationWhileBothFly(
+                other, offsetX, offsetY, relativeVelocityX, relativeVelocityY, firstArrivalTime);
+
+            double? separationAfterFirstLanding = thisArrivesFirst
+                ? other.CalculateClosestApproachTo(FinalPosition, firstArrivalTime, lastArrivalTime)
+                : CalculateClosestApproachTo(other.FinalPosition, firstArrivalTime, lastArrivalTime);
+
+            return separationAfterFirstLanding.HasValue
+                ? Math.Min(separationWhileBothFly, separationAfterFirstLanding.Value)
+                : separationWhileBothFly;
         }
 
-        public bool HayConflicto(int DistanciaSeguridad, FlightPlan plan)
+        /// <summary>
+        /// Slows this flight down, step by step, until it no longer conflicts with <paramref name="other"/>.
+        /// </summary>
+        /// <remarks>
+        /// If the speed would drop to zero (or below) the conflict cannot be solved by slowing
+        /// down, so the original speed is restored instead of leaving the aircraft stopped.
+        /// </remarks>
+        /// <param name="other">The flight this one conflicts with.</param>
+        /// <param name="safetyDistance">Minimum allowed separation, in canvas units.</param>
+        /// <returns>True if the conflict was solved; false if the original speed had to be restored.</returns>
+        public bool ResolveConflictBySlowingDown(FlightPlan other, double safetyDistance)
         {
-            // PONER DISTANCIA PERPENDICULAR EN EL ELSE Y COMPARAR LAS DISTANCIAS DEL VECTOR DE DISTANCIA Y SACAR LA MENOR
-
-            double distanciaNORM, t, HA, HB, cosA, cosB, sinA, sinB, OX, OY, CV, SV, distancia;
-            double trecorrerA, trecorrerB, trecorrerRAP, trecorrerLEN, distanciaI, distanciaF;
-            double distanciaPERP, XA, YA, XB1, YB1, XB, YB, XA1, YA1, vBcosB, vBsinB, XA_XB1, YA_YB1, vAcosA, vAsinA, XB_XA1, YB_YA1, tPERP;
-
-            Position AI = new Position(this.GetInitialPosition().GetX(), this.GetInitialPosition().GetY());
-            Position BI = new Position(plan.GetInitialPosition().GetX(), plan.GetInitialPosition().GetY());
-            Position AF = new Position(this.GetfinalPosition().GetX(), this.GetfinalPosition().GetY());
-            Position BF = new Position(plan.GetfinalPosition().GetX(), plan.GetfinalPosition().GetY());
-
-            HA = Math.Sqrt((AF.GetX() - AI.GetX()) * (AF.GetX() - AI.GetX()) + (AF.GetY() - AI.GetY()) * (AF.GetY() - AI.GetY()));
-            HB = Math.Sqrt((BF.GetX() - BI.GetX()) * (BF.GetX() - BI.GetX()) + (BF.GetY() - BI.GetY()) * (BF.GetY() - BI.GetY()));
-
-            cosA = (AF.GetX() - AI.GetX()) / (HA);
-            sinA = (AF.GetY() - AI.GetY()) / (HA);
-            cosB = (BF.GetX() - BI.GetX()) / (HB);
-            sinB = (BF.GetY() - BI.GetY()) / (HB);
-
-            OX = AI.GetX() - BI.GetX();
-            OY = AI.GetY() - BI.GetY();
-            CV = ((this.GetVelocidad() * cosA) - (plan.GetVelocidad() * cosB));
-            SV = ((this.GetVelocidad() * sinA) - (plan.GetVelocidad() * sinB));
-
-            if ((CV == 0) && (SV == 0))
+            double originalSpeed = Speed;
+            while (WillConflictWith(other, safetyDistance))
             {
-                // Caso particular
-                // Los dos vuelos van en la misma dirección (y sentido) con la misma velocidad: distancia constante.
-                distancia = Math.Sqrt((AI.GetX() - BI.GetX()) * (AI.GetX() - BI.GetX()) + (AI.GetY() - BI.GetY()) * (AI.GetY() - BI.GetY()));
-            }
-            else
-            {
-                trecorrerA = (HA / this.GetVelocidad());
-                trecorrerB = (HB / plan.GetVelocidad());
-                if (trecorrerA < trecorrerB)
+                // Rounding avoids accumulating floating point noise such as 24.900000000000002.
+                Speed = Math.Round(Speed - SpeedReductionStep, 2);
+                if (Speed <= 0)
                 {
-                    trecorrerRAP = trecorrerA;
-                    trecorrerLEN = trecorrerB;
+                    Speed = originalSpeed;
+                    return false;
                 }
-                else
-                {
-                    trecorrerRAP = trecorrerB;
-                    trecorrerLEN = trecorrerA;
-                }
-
-                t = -(OX * CV + OY * SV) / (CV * CV + SV * SV);
-
-                if (t < 0 || t > trecorrerRAP)
-                {
-                    t = 0;
-                    distanciaI = Math.Sqrt((OX + CV * t) * (OX + CV * t) + (OY + SV * t) * (OY + SV * t)); // Distancia con los dos puntos parados en el inicio
-                    distanciaF = Math.Sqrt((BF.GetX() - AF.GetX()) * (BF.GetX() - AF.GetX()) + (BF.GetY() - AF.GetY()) * (BF.GetY() - AF.GetY()));
-
-                    if (trecorrerRAP == trecorrerA)
-                    {
-                        XA = AF.GetX();
-                        YA = AF.GetY();
-                        XB1 = BI.GetX();
-                        YB1 = BI.GetY();
-
-                        // ENCONTRAR LA DISTANCIA PERPENDICULAR
-                        vBcosB = plan.GetVelocidad() * cosB;
-                        vBsinB = plan.GetVelocidad() * sinB;
-                        XA_XB1 = XA - XB1;
-                        YA_YB1 = YA - YB1;
-
-                        tPERP = (XA_XB1 * vBcosB + YA_YB1 * vBsinB) / (vBcosB * vBcosB + vBsinB * vBsinB);
-                        if (tPERP >= trecorrerRAP && tPERP <= trecorrerLEN)
-                        { distanciaPERP = Math.Sqrt((XA_XB1 - vBcosB * tPERP) * (XA_XB1 - vBcosB * tPERP) + (YA_YB1 - vBsinB * tPERP) * (YA_YB1 - vBsinB * tPERP)); }
-                        else
-                        { distanciaPERP = -1; }
-                    }
-                    else
-                    {
-                        XB = BF.GetX();
-                        YB = BF.GetY();
-                        XA1 = AI.GetX();
-                        YA1 = AI.GetY();
-
-                        // ENCONRAR LA DISTANCIA PERPENDICULAR
-                        vAcosA = this.GetVelocidad() * cosA;
-                        vAsinA = this.GetVelocidad() * sinA;
-                        XB_XA1 = XB - XA1;
-                        YB_YA1 = YB - YA1;
-
-                        tPERP = (XB_XA1 * vAcosA + YB_YA1 * vAsinA) / (vAcosA * vAcosA + vAsinA * vAsinA);
-                        if (tPERP >= trecorrerRAP && tPERP <= trecorrerLEN)
-                        { distanciaPERP = Math.Sqrt((XB_XA1 - vAcosA * tPERP) * (XB_XA1 - vAcosA * tPERP) + (YB_YA1 - vAsinA * tPERP) * (YB_YA1 - vAsinA * tPERP)); }
-                        else
-                        { distanciaPERP = -1; }
-                    }
-
-                    // Comparamos distancias y nos quedamos con la menor
-                    if (distanciaPERP == -1)
-                    {
-                        if (distanciaI < distanciaF)
-                        { distancia = distanciaI; }
-                        else
-                        { distancia = distanciaF; }
-                    }
-                    else
-                    {
-                        if (distanciaI < distanciaF && distanciaI < distanciaPERP)
-                        { distancia = distanciaI; }
-                        if (distanciaF < distanciaI && distanciaF < distanciaPERP)
-                        { distancia = distanciaF; }
-                        else
-                        { distancia = distanciaPERP; }
-                    }
-
-                }
-                else
-                {
-                    distanciaNORM = Math.Sqrt((OX + CV * t) * (OX + CV * t) + (OY + SV * t) * (OY + SV * t));
-
-                    if (trecorrerRAP == trecorrerA)
-                    {
-                        XA = AF.GetX();
-                        YA = AF.GetY();
-                        XB1 = BI.GetX();
-                        YB1 = BI.GetY();
-
-                        // ENCONTRAR LA DISTANCIA PERPENDICULAR
-                        vBcosB = plan.GetVelocidad() * cosB;
-                        vBsinB = plan.GetVelocidad() * sinB;
-                        XA_XB1 = XA - XB1;
-                        YA_YB1 = YA - YB1;
-
-                        tPERP = (XA_XB1 * vBcosB + YA_YB1 * vBsinB) / (vBcosB * vBcosB + vBsinB * vBsinB);
-                        if (tPERP >= trecorrerRAP && tPERP <= trecorrerLEN)
-                        { distanciaPERP = Math.Sqrt((XA_XB1 - vBcosB * tPERP) * (XA_XB1 - vBcosB * tPERP) + (YA_YB1 - vBsinB * tPERP) * (YA_YB1 - vBsinB * tPERP)); }
-                        else
-                        { distanciaPERP = -1; }
-                    }
-                    else
-                    {
-                        XB = BF.GetX();
-                        YB = BF.GetY();
-                        XA1 = AI.GetX();
-                        YA1 = AI.GetY();
-
-                        // ENCONTRAR LA DISTANCIA PERPENDICULAR
-                        vAcosA = this.GetVelocidad() * cosA;
-                        vAsinA = this.GetVelocidad() * sinA;
-                        XB_XA1 = XB - XA1;
-                        YB_YA1 = YB - YA1;
-
-                        tPERP = (XB_XA1 * vAcosA + YB_YA1 * vAsinA) / (vAcosA * vAcosA + vAsinA * vAsinA);
-                        if (tPERP >= trecorrerRAP && tPERP <= trecorrerLEN)
-                        { distanciaPERP = Math.Sqrt((XB_XA1 - vAcosA * tPERP) * (XB_XA1 - vAcosA * tPERP) + (YB_YA1 - vAsinA * tPERP) * (YB_YA1 - vAsinA * tPERP)); }
-                        else
-                        { distanciaPERP = -1; }
-                    }
-
-                    // Comparamos distancias y nos quedamos con la menor
-                    if (distanciaPERP == -1)
-                    { distancia = distanciaNORM; }
-                    else
-                    {
-                        if (distanciaNORM < distanciaPERP)
-                        { distancia = distanciaNORM; }
-                        else
-                        { distancia = distanciaPERP; }
-                    }
-                }
-                //MessageBox.Show(Convert.ToString(Math.Round(distancia, 2)), "Distancia:");
             }
-            if (distancia < DistanciaSeguridad)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return true;
         }
 
-        public void SolucionadorConflictosCambioVel(int distanciaSeg, FlightPlan plan)
+        /// <summary>
+        /// Minimum separation during the phase in which both aircraft are still flying.
+        /// </summary>
+        private double CalculateMinimumSeparationWhileBothFly(FlightPlan other, double offsetX, double offsetY,
+                                                              double relativeVelocityX, double relativeVelocityY,
+                                                              double firstArrivalTime)
         {
-            double Vo = this.GetVelocidad();
-            while (this.HayConflicto(distanciaSeg, plan) == true)
+            double closestApproachTime = -(offsetX * relativeVelocityX + offsetY * relativeVelocityY)
+                                         / (relativeVelocityX * relativeVelocityX + relativeVelocityY * relativeVelocityY);
+
+            if (closestApproachTime < 0 || closestApproachTime > firstArrivalTime)
             {
-                double velocidad = this.GetVelocidad();
-                velocidad = velocidad - 0.1;
-                this.SetVelocidad(velocidad);
-                this.HayConflicto(distanciaSeg, plan);
-                if (velocidad == 0)
-                { 
-                    velocidad = Vo;
-                    this.SetVelocidad(velocidad);
-                    break;
-                }
+                // The relative distance only grows or only shrinks in this phase,
+                // so its minimum is at one of the two ends of the phase.
+                double separationAtStart = InitialPosition.DistanceTo(other.InitialPosition);
+                double separationAtEnd = FinalPosition.DistanceTo(other.FinalPosition);
+                return Math.Min(separationAtStart, separationAtEnd);
             }
+
+            double closestX = offsetX + relativeVelocityX * closestApproachTime;
+            double closestY = offsetY + relativeVelocityY * closestApproachTime;
+            return Math.Sqrt(closestX * closestX + closestY * closestY);
         }
-        public void copiarFlightPlan(FlightPlan FP)
+
+        /// <summary>
+        /// Closest distance between this (still flying) aircraft and a fixed point, considering only
+        /// the time window [<paramref name="fromTime"/>, <paramref name="toTime"/>].
+        /// </summary>
+        /// <param name="fixedPoint">Where the other, already landed, aircraft is parked.</param>
+        /// <param name="fromTime">Start of the window (when the other aircraft landed).</param>
+        /// <param name="toTime">End of the window (when this aircraft lands).</param>
+        /// <returns>The distance, or null when the closest point is reached outside the window.</returns>
+        private double? CalculateClosestApproachTo(Position fixedPoint, double fromTime, double toTime)
         {
-            this.id = FP.getId();
-            Position P = new Position();
-            P.copiarPosicion(FP.GetInitialPosition());
-            this.initialPosition = P;
-            P = new Position();
-            P.copiarPosicion(FP.GetCurrentPosition());
-            this.currentPosition = P;
-            P = new Position();
-            P.copiarPosicion(FP.GetfinalPosition());
-            this.finalPosition = P;
-            this.velocidad = FP.GetVelocidad();
-            this.combustible = FP.getComb();
+            (double X, double Y) velocity = GetVelocityVector();
+            double toPointX = fixedPoint.X - InitialPosition.X;
+            double toPointY = fixedPoint.Y - InitialPosition.Y;
+
+            double closestTime = (toPointX * velocity.X + toPointY * velocity.Y)
+                                 / (velocity.X * velocity.X + velocity.Y * velocity.Y);
+
+            // A NaN time (aircraft not moving) fails both comparisons, so it is also rejected here.
+            if (!(closestTime >= fromTime && closestTime <= toTime))
+                return null;
+
+            double gapX = toPointX - velocity.X * closestTime;
+            double gapY = toPointY - velocity.Y * closestTime;
+            return Math.Sqrt(gapX * gapX + gapY * gapY);
+        }
+
+        /// <summary>Velocity vector (speed times unit direction of the route).</summary>
+        private (double X, double Y) GetVelocityVector()
+        {
+            double routeLength = InitialPosition.DistanceTo(FinalPosition);
+            if (routeLength == 0)
+                return (0, 0); // A zero-length route has no direction: the aircraft stays still.
+
+            return (Speed * (FinalPosition.X - InitialPosition.X) / routeLength,
+                    Speed * (FinalPosition.Y - InitialPosition.Y) / routeLength);
+        }
+
+        /// <summary>Time needed to fly the whole route, in the speed's time unit.</summary>
+        private double GetTimeToCompleteRoute()
+        {
+            return InitialPosition.DistanceTo(FinalPosition) / Speed;
         }
     }
 }

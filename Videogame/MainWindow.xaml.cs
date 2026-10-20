@@ -1,207 +1,277 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Media;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 
 namespace Videogame
 {
+    /// <summary>
+    /// A small side-scrolling mini-game: keep the jet in the air with the space bar and fly
+    /// through the gaps between obstacles. Reaching <see cref="WinningScore"/> wins the game.
+    /// </summary>
     public partial class MainWindow : Window
     {
-        DispatcherTimer gameTimer = new DispatcherTimer(); // create a new instance of the timer class called game timer
-        DispatcherTimer CountdownTimer = new DispatcherTimer(); // another one for the countdown at the beginning of the game
+        // Image tags used in MainWindow.xaml to tell the game which images are obstacles or clouds.
+        private const string FirstObstacleTag = "obstacle1";
+        private const string SecondObstacleTag = "obstacle2";
+        private const string ThirdObstacleTag = "obstacle3";
+        private const string CloudTag = "clouds";
 
-        int count = 0;
-        int gravity = 8; // new gravity integer hold the vlaue 8
-        double score; // score keeper
-        bool gameover = false; // new boolean for checking if the game is over or not
+        private const int CountdownSeconds = 5;
+        private const int FrameIntervalMilliseconds = 20;
 
-        Rect JetHitBox; // new rect class to help us detect collisions
+        /// <summary>Pixels per frame the jet falls (positive) or climbs (negative).</summary>
+        private const int FallSpeed = 8;
+        private const int ClimbSpeed = -8;
+
+        private const int ObstacleSpeed = 5;
+        private const int CloudSpeed = 1;
+
+        /// <summary>
+        /// Each obstacle is made of two images (top and bottom), and each image adds half a point
+        /// when it is recycled, so passing one obstacle is worth exactly one point.
+        /// </summary>
+        private const double PointsPerObstacleImage = 0.5;
+        private const double WinningScore = 10;
+
+        /// <summary>From this score on, obstacles are recycled much further away, so they come less often.</summary>
+        private const double SparseObstaclesScore = 7;
+
+        private const double ObstacleExitPosition = -100;
+        private const double ObstacleRespawnPosition = 800;
+        private const double SparseObstacleRespawnPosition = 5000;
+        private const double CloudExitPosition = -250;
+        private const double CloudRespawnPosition = 550;
+
+        private const double JetStartTop = 190;
+        private const double CeilingLimit = -10;
+        private const double FloorLimit = 458;
+        private const double ClimbTiltDegrees = -20;
+        private const double FallTiltDegrees = 5;
+
+        private readonly DispatcherTimer gameTimer = new DispatcherTimer();
+        private readonly DispatcherTimer countdownTimer = new DispatcherTimer();
+
+        private int countdownSecondsElapsed;
+        private int jetVerticalSpeed = FallSpeed;
+        private double score;
+        private bool isGameOver;
+
+        /// <summary>Builds the window and starts the countdown that precedes the first game.</summary>
         public MainWindow()
         {
             InitializeComponent();
 
-            // set the default settings for the timer
-            gameTimer.Tick += GameEngine; // link the timer tick to the game engine event
-            gameTimer.Interval = TimeSpan.FromMilliseconds(20); // set the interval to 20 miliseconds
+            gameTimer.Tick += OnGameFrame;
+            gameTimer.Interval = TimeSpan.FromMilliseconds(FrameIntervalMilliseconds);
 
-            // we configurate all the textboxes at the beginning
-            RestartText.Visibility = Visibility.Hidden;
-            CloseText.Visibility = Visibility.Hidden;
-            ResultText.Visibility = Visibility.Hidden;
-            InfoText.Visibility = Visibility.Visible;
-            CountdownText.Visibility = Visibility.Visible;
+            countdownTimer.Interval = TimeSpan.FromSeconds(1);
+            countdownTimer.Tick += OnCountdownTick;
 
-            // we count every tick of the timer to make a countdown
-            CountdownTimer.Interval = TimeSpan.FromSeconds(1);
-            CountdownTimer.Tick += (a, b) =>
-            {
-                count++;
-                CountdownText.Content = 5 - count;
-                if (Convert.ToInt32(CountdownText.Content) == 0)
-                {
-                    InfoText.Visibility = Visibility.Hidden;
-                    CountdownText.Visibility = Visibility.Hidden;
-                    StartGame();
-                }
-            };
-            CountdownTimer.Start();
+            // Timers keep firing after the window closes unless they are stopped explicitly.
+            Closed += (sender, eventArgs) => StopTimers();
+
+            ShowCountdownScreen();
+            countdownTimer.Start();
         }
 
-        private void GameEngine(object sender, EventArgs e)
+        private void ShowCountdownScreen()
         {
-            // this is the game engine event linked to the timer
-            scoreText.Content = "Score: " + score + "/50"; // first update the score text label with the score integer
-            JetHitBox = new Rect(Canvas.GetLeft(Jet), Canvas.GetTop(Jet), Jet.Width, Jet.Height); // link the flappy bird image to the flappy rect class
-            Canvas.SetTop(Jet, Canvas.GetTop(Jet) + gravity); // set the gravity to the flappy bird image in the canvas
+            RestartLabel.Visibility = Visibility.Hidden;
+            CloseLabel.Visibility = Visibility.Hidden;
+            ResultLabel.Visibility = Visibility.Hidden;
+            InstructionsLabel.Visibility = Visibility.Visible;
+            CountdownLabel.Visibility = Visibility.Visible;
+        }
 
-            // check if the bird has either gone off the screen from top or bottom
-            if (Canvas.GetTop(Jet) < -10 || Canvas.GetTop(Jet) > 458)
+        private void OnCountdownTick(object sender, EventArgs e)
+        {
+            countdownSecondsElapsed++;
+            int secondsLeft = CountdownSeconds - countdownSecondsElapsed;
+            CountdownLabel.Content = secondsLeft;
+
+            if (secondsLeft <= 0)
             {
-                // if it has then we end the game and show the reset game text
-                ResultText.Content = "GAME OVER !!";
-                EndGame();
+                countdownTimer.Stop();
+                InstructionsLabel.Visibility = Visibility.Hidden;
+                CountdownLabel.Visibility = Visibility.Hidden;
+                StartGame();
             }
-            // below is the main loop, this loop will go through each image in the canvas
-            // if it finds any image with the tags and follow the instructions with them
-            foreach (var x in MyCanvas.Children.OfType<Image>())
+        }
+
+        /// <summary>Runs once per frame: applies gravity, scrolls the scenery and checks collisions.</summary>
+        private void OnGameFrame(object sender, EventArgs e)
+        {
+            UpdateScoreLabel();
+            Rect jetHitBox = GetHitBox(JetImage);
+            Canvas.SetTop(JetImage, Canvas.GetTop(JetImage) + jetVerticalSpeed);
+
+            if (IsJetOutOfScreen())
             {
-                if ((string)x.Tag == "obs1" || (string)x.Tag == "obs2" || (string)x.Tag == "obs3")
+                EndGame("GAME OVER !!");
+                return;
+            }
+
+            // ToList() takes a snapshot, so the canvas can be safely modified while iterating.
+            foreach (Image image in GameCanvas.Children.OfType<Image>().ToList())
+            {
+                string tag = image.Tag as string;
+                if (IsObstacleTag(tag))
                 {
-                    Canvas.SetLeft(x, Canvas.GetLeft(x) - 5); // if we found an image with the tag obs1,2 or 3 then we will move it towards left of the screen
-                    Rect PipeHitBox = new Rect(Canvas.GetLeft(x), Canvas.GetTop(x), x.Width, x.Height); // create a new rect called pillars and link the rectangles to it
-
-                    // if the flappy rect and the pillars rect collide
-                    if (JetHitBox.IntersectsWith(PipeHitBox))
-                    {
-                        // end the game
-                        ResultText.Content = "GAME OVER !!";
-                        EndGame();
-                    }
-
-                    // if the first layer of pipes leave the scene and go to -100 pixels from the left
-                    // we need to reset the pipe to come back again
-                    if (Canvas.GetLeft(x) < -100)
-                    {
-                        if (score >= 7)
-                        {
-                            Canvas.SetLeft(x, 5000); // reset the pipe to 800 pixels
-                            score = score + .5; // add 1 to the score
-                        }
-                        if (score < 7)
-                        {
-                            Canvas.SetLeft(x, 800); // reset the pipe to 800 pixels
-                            score = score + .5; // add 1 to the score
-                        }
-                    }
-                    if (score == 10)
-                    {
-                        scoreText.Content = "Score: " + score + "/50";
-                        ResultText.Content = "You've won !";
-                        // end the game
-                        EndGame();
-                    }
+                    if (MoveObstacle(image, jetHitBox))
+                        return; // The game ended on this frame.
                 }
-                // if find any of the images with the clouds tag on it
-                if ((string)x.Tag == "clouds")
+                else if (tag == CloudTag)
                 {
-                    Canvas.SetLeft(x, Canvas.GetLeft(x) - 1); // then we will slowly move the cloud towards left of the screen
-
-                    // if the clouds have reached -250 pixels then we will reset it
-                    if (Canvas.GetLeft(x) < -250)
-                    {
-                        // reset the cloud images to 550 pixels
-                        Canvas.SetLeft(x, 550);
-                    }
+                    MoveCloud(image);
                 }
             }
         }
+
+        /// <summary>
+        /// Scrolls one obstacle image, recycles it when it leaves the screen and checks for
+        /// collisions or victory.
+        /// </summary>
+        /// <returns>True if the game ended.</returns>
+        private bool MoveObstacle(Image obstacle, Rect jetHitBox)
+        {
+            Canvas.SetLeft(obstacle, Canvas.GetLeft(obstacle) - ObstacleSpeed);
+
+            if (jetHitBox.IntersectsWith(GetHitBox(obstacle)))
+            {
+                EndGame("GAME OVER !!");
+                return true;
+            }
+
+            if (Canvas.GetLeft(obstacle) < ObstacleExitPosition)
+            {
+                double respawnPosition = score >= SparseObstaclesScore ? SparseObstacleRespawnPosition : ObstacleRespawnPosition;
+                Canvas.SetLeft(obstacle, respawnPosition);
+                score += PointsPerObstacleImage;
+            }
+
+            if (score >= WinningScore)
+            {
+                UpdateScoreLabel();
+                EndGame("You've won !");
+                return true;
+            }
+            return false;
+        }
+
+        private static void MoveCloud(Image cloud)
+        {
+            Canvas.SetLeft(cloud, Canvas.GetLeft(cloud) - CloudSpeed);
+            if (Canvas.GetLeft(cloud) < CloudExitPosition)
+                Canvas.SetLeft(cloud, CloudRespawnPosition);
+        }
+
+        /// <summary>Resets the score, the jet and the scenery to their starting positions and starts playing.</summary>
         public void StartGame()
         {
-            RestartText.Visibility = Visibility.Visible;
-            CloseText.Visibility = Visibility.Visible;
+            RestartLabel.Visibility = Visibility.Visible;
+            CloseLabel.Visibility = Visibility.Visible;
 
-            // this is the start game function 
-            // this function will load all of the default values to start this game
+            score = 0;
+            isGameOver = false;
+            Canvas.SetTop(JetImage, JetStartTop);
+            ResetSceneryPositions();
 
-            int temp = 200; // first make a temp integer with the value 200
-            score = 0; // set score to 0
-            Canvas.SetTop(Jet, 190); // set the flappy bird top position to 100 pixels
-            gameover = false;  // set game over to false
+            gameTimer.Start();
+        }
 
-            // the loop below will simply check for each image in this game and set them to their default positions
-            foreach (var x in MyCanvas.Children.OfType<Image>())
+        private void ResetSceneryPositions()
+        {
+            // The first cloud starts at 500 and every following one at 1100.
+            double nextCloudPosition = 500;
+            foreach (Image image in GameCanvas.Children.OfType<Image>())
             {
-                // set obs1 pipes to its default position
-                if (x is Image && (string)x.Tag == "obs1")
+                switch (image.Tag as string)
                 {
-                    Canvas.SetLeft(x, 500);
-                }
-                // set obs2 pipes to its default position
-                if (x is Image && (string)x.Tag == "obs2")
-                {
-                    Canvas.SetLeft(x, 800);
-                }
-                // set obs3 pipes to its default position
-                if (x is Image && (string)x.Tag == "obs3")
-                {
-                    Canvas.SetLeft(x, 1100);
-                }
-                // set the clouds to its default position
-                if (x is Image && (string)x.Tag == "clouds")
-                {
-                    Canvas.SetLeft(x, (300 + temp));
-                    temp = 800;
+                    case FirstObstacleTag:
+                        Canvas.SetLeft(image, 500);
+                        break;
+                    case SecondObstacleTag:
+                        Canvas.SetLeft(image, 800);
+                        break;
+                    case ThirdObstacleTag:
+                        Canvas.SetLeft(image, 1100);
+                        break;
+                    case CloudTag:
+                        Canvas.SetLeft(image, nextCloudPosition);
+                        nextCloudPosition = 1100;
+                        break;
                 }
             }
-            gameTimer.Start(); // start the main game timer
         }
-        public void EndGame()
+
+        /// <summary>Stops the game and shows <paramref name="resultMessage"/> to the player.</summary>
+        public void EndGame(string resultMessage)
         {
-            ResultText.Visibility = Visibility.Visible;
-            // stop the timer, set the game over to true and show the reset text
+            ResultLabel.Content = resultMessage;
+            ResultLabel.Visibility = Visibility.Visible;
             gameTimer.Stop();
-            gameover = true;
+            isGameOver = true;
         }
 
-        private void KeyIsDown(object sender, KeyEventArgs e)
+        private void StopTimers()
         {
-            // if the space key is pressed
-            if (e.Key == Key.Space)
+            gameTimer.Stop();
+            countdownTimer.Stop();
+        }
+
+        private void HandleKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
             {
-                // rotate the bird image to -20 degrees from the center position
-                Jet.RenderTransform = new RotateTransform(-20, Jet.Width / 2, Jet.Height / 2);
-                gravity = -8; // change gravity so it will move upwards
-            }
-            if (e.Key == Key.R && gameover == true)
-            {
-                // if the r key is pressed AND game over boolean is set to true
-                ResultText.Visibility = Visibility.Hidden;
-                StartGame(); // run the start game function
-            }
-            if (e.Key == Key.C)
-            {
-                EndGame();
-                Close();
+                case Key.Space:
+                    TiltJet(ClimbTiltDegrees);
+                    jetVerticalSpeed = ClimbSpeed;
+                    break;
+                case Key.R when isGameOver:
+                    ResultLabel.Visibility = Visibility.Hidden;
+                    StartGame();
+                    break;
+                case Key.C:
+                    StopTimers();
+                    Close();
+                    break;
             }
         }
 
-        private void KeyIsUp(object sender, KeyEventArgs e)
+        private void HandleKeyUp(object sender, KeyEventArgs e)
         {
-            // if the keys are released then we will change the rotation of the flappy bird to 5 degrees from the center
-            Jet.RenderTransform = new RotateTransform(5, Jet.Width / 2, Jet.Height / 2);
-            gravity = 8; // change the gravity to 8 so the bird will go downwards and not up
+            TiltJet(FallTiltDegrees);
+            jetVerticalSpeed = FallSpeed;
+        }
+
+        private void TiltJet(double degrees)
+        {
+            JetImage.RenderTransform = new RotateTransform(degrees, JetImage.Width / 2, JetImage.Height / 2);
+        }
+
+        private void UpdateScoreLabel()
+        {
+            ScoreLabel.Content = $"Score: {score}/{WinningScore}";
+        }
+
+        private bool IsJetOutOfScreen()
+        {
+            double jetTop = Canvas.GetTop(JetImage);
+            return jetTop < CeilingLimit || jetTop > FloorLimit;
+        }
+
+        private static bool IsObstacleTag(string tag)
+        {
+            return tag == FirstObstacleTag || tag == SecondObstacleTag || tag == ThirdObstacleTag;
+        }
+
+        private static Rect GetHitBox(FrameworkElement element)
+        {
+            return new Rect(Canvas.GetLeft(element), Canvas.GetTop(element), element.Width, element.Height);
         }
     }
 }
