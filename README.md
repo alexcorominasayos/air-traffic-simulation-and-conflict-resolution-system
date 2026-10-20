@@ -122,3 +122,13 @@ corner. For the Google Earth export, it is mapped onto a box over the Iberian Pe
 
 Each numbered branch (`1.1`, `1.2`, ...) is a version of the project; `main` holds the latest
 merged version.
+
+## Contributors
+
+* **Guillem Aguilera Ruiz**
+* **Àlex Coromina Sayós** - [@alexcorominasayos](https://github.com/alexcorominasayos)
+* **Adrián Escribano Del Pozo**
+
+## License
+
+**MIT**
