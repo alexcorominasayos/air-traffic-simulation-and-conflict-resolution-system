@@ -69,9 +69,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\BaseDatos\BaseDatos.csproj">
+    <ProjectReference Include="..\Database\Database.csproj">
       <Project>{5c664a8b-3819-4452-8776-8f905fe3ecce}</Project>
-      <Name>BaseDatos</Name>
+      <Name>Database</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

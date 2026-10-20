@@ -1,0 +1,23 @@
+# Requirements to build and run the Air Traffic Simulation and Conflict Resolution System.
+#
+# This is a .NET Framework (C#) solution, so nothing here is installed with pip: each line
+# describes something to install by hand. The library dependencies themselves are declared in
+# the .csproj files.
+
+# --- Operating system ---------------------------------------------------------
+Windows 10 or Windows 11                      # Windows Forms and WPF run only on Windows
+
+# --- To build -----------------------------------------------------------------
+Visual Studio 2022 (17.x) or newer            # Community edition is enough
+  workload: .NET desktop development          # Windows Forms, WPF and MSBuild
+.NET Framework 4.7.2 Developer Pack           # Target framework of all four projects
+
+# --- Libraries (already included in the repository) ---------------------------
+System.Data.SQLite == 1.0.79.0 (x86)          # SQLite/System.Data.SQLite.dll, used by Database and Menu
+
+# --- To run -------------------------------------------------------------------
+.NET Framework 4.7.2 Runtime or newer         # Already included in Windows 10 (1803+) and Windows 11
+
+# --- Optional -----------------------------------------------------------------
+Google Earth Pro                              # Opens the .kml files exported by the simulator
+Gmail account with an app password            # Sends registration / password emails (Menu/smtp.secrets.config)
