@@ -95,12 +95,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Imagenes\clouds.png" />
-    <Resource Include="Imagenes\clouds2.png" />
-    <Resource Include="Imagenes\jet.png" />
-    <Resource Include="Imagenes\pipeBottomGray.png" />
-    <Resource Include="Imagenes\pipeTopGray.png" />
-    <Resource Include="Imagenes\starsbackground.jpg" />
+    <Resource Include="Images\clouds.png" />
+    <Resource Include="Images\clouds2.png" />
+    <Resource Include="Images\jet.png" />
+    <Resource Include="Images\pipeBottomGray.png" />
+    <Resource Include="Images\pipeTopGray.png" />
+    <Resource Include="Images\starsbackground.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

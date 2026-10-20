@@ -1,10 +1,69 @@
+## Visual Studio / .NET Framework (C#) ignore rules for this solution.
+
+# Visual Studio cache and per-user settings
 .vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Build output
 [Bb]in/
 [Oo]bj/
-*.wav
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]64/
+[Ll]og/
+[Ll]ogs/
+*.pdb
+*.ilk
+*.obj
+*.tlog
+*.cache
+*.vspscc
+*.vssscc
 
-# Local email credentials for the Menu project (see Main Menu/smtp.secrets.example.config)
+# NuGet packages (restored automatically; none are used today, but this keeps a future restore out of git)
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.assets.json
+
+# Test results and code coverage
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# ReSharper / JetBrains Rider / VS Code
+_ReSharper*/
+*.DotSettings.user
+.idea/
+.vscode/
+
+# Local email credentials for the Menu project (see Menu/smtp.secrets.example.config)
 smtp.secrets.config
 
-# Personal Visual Studio settings
-*.user
+# Runtime data created by the program next to the executable. The database holds user
+# accounts, so it must never be committed; the program creates a new one when missing.
+*.db
+*.db-journal
+Conflict Log Solutions.txt
+*.kml
+
+# Repository backups (they can contain old history, including removed secrets)
+*.bundle
+
+# Sound files (the music was removed from the project)
+*.wav
+
+# Operating system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

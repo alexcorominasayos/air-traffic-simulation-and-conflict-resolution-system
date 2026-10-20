@@ -31,11 +31,13 @@ namespace FlightLib
     /// <code>
     /// TC DS
     /// &lt;cycle time&gt; &lt;safety distance&gt;
-    /// Transponder xi yi cx cy xf yf velocidad combustible initialFuel
+    /// Transponder xi yi cx cy xf yf speed fuel initialFuel
     /// &lt;one line per flight&gt;
     /// -
     /// &lt;history: one block of N flight lines per previous state, most recent first&gt;
     /// </code>
+    /// The header lines are informative only and are skipped when loading, so files written by
+    /// earlier versions (with Spanish column titles) still load.
     /// The last value of each flight line (initial fuel) was added later; files without it still
     /// load, and their current fuel is then used as the initial fuel.
     /// Numbers use the computer's regional format (for example "12,5" on a Spanish Windows).
@@ -47,7 +49,7 @@ namespace FlightLib
         public const string Extension = ".txt";
 
         private const string SettingsHeader = "TC DS";
-        private const string FlightsHeader = "Transponder xi yi cx cy xf yf velocidad combustible initialFuel";
+        private const string FlightsHeader = "Transponder xi yi cx cy xf yf speed fuel initialFuel";
         private const string HistorySeparator = "-";
         private const int MinimumFieldsPerFlight = 9;
         private const int InitialFuelField = 9;
