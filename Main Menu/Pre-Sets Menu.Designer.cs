@@ -121,7 +121,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoScroll = true;
-            this.BackgroundImage = global::Main_Menu.Properties.Resources.tc;
+            this.BackgroundImage = global::Main_Menu.Properties.Resources.Image_Background_Tower;
             this.ClientSize = new System.Drawing.Size(951, 450);
             this.Controls.Add(this.buttonAceptar);
             this.Controls.Add(this.buttonAutofill);

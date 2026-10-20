@@ -134,8 +134,7 @@
             this.labelWelcomeBack.Name = "labelWelcomeBack";
             this.labelWelcomeBack.Size = new System.Drawing.Size(188, 20);
             this.labelWelcomeBack.TabIndex = 9;
-            this.labelWelcomeBack.Text = "Welcome back, BRRRR";
-            this.labelWelcomeBack.Click += new System.EventHandler(this.labelWelcomeBack_Click);
+            this.labelWelcomeBack.Text = "Welcome back";
             // 
             // buttonLoadFP
             // 
@@ -196,7 +195,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackgroundImage = global::Main_Menu.Properties.Resources.rgf;
+            this.BackgroundImage = global::Main_Menu.Properties.Resources.Image_Background_Runway;
             this.ClientSize = new System.Drawing.Size(1067, 554);
             this.Controls.Add(this.AddPointBtn);
             this.Controls.Add(this.VideogameBtn);

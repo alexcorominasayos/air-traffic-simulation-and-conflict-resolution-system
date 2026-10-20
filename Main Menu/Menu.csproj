@@ -155,6 +155,11 @@
     <Compile Include="MenuContraseña.Designer.cs">
       <DependentUpon>MenuContraseña.cs</DependentUpon>
     </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="RecuperarContraseña.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -228,14 +233,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
     <EmbeddedResource Include="RecuperarContraseña.resx">
       <DependentUpon>RecuperarContraseña.cs</DependentUpon>
     </EmbeddedResource>
@@ -273,9 +273,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\musicaGTA.wav" />
-  </ItemGroup>
-  <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
       <Visible>False</Visible>
       <ProductName>Microsoft .NET Framework 4.7.2 %28x86 y x64%29</ProductName>
@@ -288,29 +285,19 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Captura de pantalla 2024-11-11 214931.png" />
+    <None Include="Resources\Image_Background_Simulator.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Brrr-bebesitaa-Sonido-Anuel-_Efecto-de-sonido_-__-_-ezmp3.cc-_.wav" />
+    <None Include="Resources\Image_Aircraft_Simulator.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\avion_chuleta.png" />
+    <None Include="Resources\Image_Background_Runway.jpg" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\rgf.jpg" />
+    <None Include="Resources\Image_Flight_Plan.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\fp.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\tc.jpg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\El-Alfa_-Yandel_-Myke-Towers-Dembow-Y-Reggaeton-_Letra_.wav" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\iPhone-Radar-AlarmRingtone-_Apple-Sound_-Sound-Effect-for-Editing.wav" />
-    <Content Include="Resources\MusicDuringGame.wav" />
+    <None Include="Resources\Image_Background_Tower.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
