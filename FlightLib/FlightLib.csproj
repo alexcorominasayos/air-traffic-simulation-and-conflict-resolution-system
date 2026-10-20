@@ -59,9 +59,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConflictResolutionLog.cs" />
     <Compile Include="FlightPlanList.cs" />
     <Compile Include="FlightPlan.cs" />
+    <Compile Include="KmlExporter.cs" />
     <Compile Include="Position.cs" />
+    <Compile Include="SimulationCanvas.cs" />
+    <Compile Include="SimulationFile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
