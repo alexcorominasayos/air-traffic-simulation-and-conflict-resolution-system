@@ -32,6 +32,7 @@ namespace Main_Menu
         {
             InitializeComponent();
             this.userName = userName;
+            AddTestScenarioButtons();
         }
 
         /// <summary>True when the form was closed with "Log out" (instead of closing the application).</summary>
@@ -243,22 +244,37 @@ namespace Main_Menu
             Application.Exit();
         }
 
-        // The two buttons below are hidden in the delivered version. They load ready-made
-        // scenarios to test the simulator quickly during development.
+#if DEBUG
+        // Test scenarios to try the simulator quickly while developing. They are compiled only
+        // in Debug builds, so the Release version delivered to users never contains them.
+        // The buttons are created here instead of in the designer because the designer
+        // cannot keep code inside #if blocks.
 
-        private void autoFillButton_Click(object sender, EventArgs e)
+        /// <summary>Adds two buttons that load ready-made test scenarios (Debug builds only).</summary>
+        partial void AddTestScenarioButtons()
         {
-            LoadTestScenario(
+            AddTestScenarioButton("Test: no conflict", new Point(913, 274), (sender, e) => LoadTestScenario(
                 new FlightPlan("VY", 15, 564, 15, 564, 152, 156, speed: 10, fuel: 10000),
-                new FlightPlan("IB", 146, 234, 146, 234, 420, 69, speed: 20, fuel: 34000));
+                new FlightPlan("IB", 146, 234, 146, 234, 420, 69, speed: 20, fuel: 34000)));
+
+            // Two flights crossing in the middle of their routes at the same speed: a guaranteed conflict.
+            AddTestScenarioButton("Test: conflict", new Point(913, 321), (sender, e) => LoadTestScenario(
+                new FlightPlan("VLG123", 0, 0, 0, 0, 200, 200, speed: 25, fuel: 10000),
+                new FlightPlan("IBE456", 0, 200, 0, 200, 200, 0, speed: 25, fuel: 34000)));
         }
 
-        private void autoFillConflictButton_Click(object sender, EventArgs e)
+        private void AddTestScenarioButton(string text, Point location, EventHandler onClick)
         {
-            // Two flights crossing in the middle of their routes at the same speed: a guaranteed conflict.
-            LoadTestScenario(
-                new FlightPlan("VLG123", 0, 0, 0, 0, 200, 200, speed: 25, fuel: 10000),
-                new FlightPlan("IBE456", 0, 200, 0, 200, 200, 0, speed: 25, fuel: 34000));
+            Button button = new Button
+            {
+                Text = text,
+                Location = location,
+                Size = new Size(100, 28),
+                Margin = new Padding(4),
+                UseVisualStyleBackColor = true,
+            };
+            button.Click += onClick;
+            Controls.Add(button);
         }
 
         private void LoadTestScenario(FlightPlan firstFlight, FlightPlan secondFlight)
@@ -268,5 +284,12 @@ namespace Main_Menu
             cycleTime = 60;
             safetyDistance = 30;
         }
+#endif
+
+        /// <summary>
+        /// Implemented only in Debug builds (see above). In Release builds the compiler removes the
+        /// call entirely, because a partial method without a body does nothing.
+        /// </summary>
+        partial void AddTestScenarioButtons();
     }
 }

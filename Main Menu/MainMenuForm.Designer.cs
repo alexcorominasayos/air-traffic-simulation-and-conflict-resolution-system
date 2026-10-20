@@ -32,8 +32,6 @@
             this.titleLabel = new System.Windows.Forms.Label();
             this.presetsButton = new System.Windows.Forms.Button();
             this.simulateButton = new System.Windows.Forms.Button();
-            this.autoFillButton = new System.Windows.Forms.Button();
-            this.autoFillConflictButton = new System.Windows.Forms.Button();
             this.logOutButton = new System.Windows.Forms.Button();
             this.closeButton = new System.Windows.Forms.Button();
             this.welcomeBackLabel = new System.Windows.Forms.Label();
@@ -77,29 +75,6 @@
             this.simulateButton.Text = "Simulate";
             this.simulateButton.UseVisualStyleBackColor = false;
             this.simulateButton.Click += new System.EventHandler(this.simulateButton_Click);
-            // 
-            // autoFillButton
-            // 
-            this.autoFillButton.Location = new System.Drawing.Point(913, 274);
-            this.autoFillButton.Margin = new System.Windows.Forms.Padding(4);
-            this.autoFillButton.Name = "autoFillButton";
-            this.autoFillButton.Size = new System.Drawing.Size(100, 28);
-            this.autoFillButton.TabIndex = 4;
-            this.autoFillButton.Text = "auto";
-            this.autoFillButton.UseVisualStyleBackColor = true;
-            this.autoFillButton.Visible = false;
-            this.autoFillButton.Click += new System.EventHandler(this.autoFillButton_Click);
-            // 
-            // autoFillConflictButton
-            // 
-            this.autoFillConflictButton.Location = new System.Drawing.Point(913, 321);
-            this.autoFillConflictButton.Margin = new System.Windows.Forms.Padding(4);
-            this.autoFillConflictButton.Name = "autoFillConflictButton";
-            this.autoFillConflictButton.Size = new System.Drawing.Size(100, 28);
-            this.autoFillConflictButton.TabIndex = 5;
-            this.autoFillConflictButton.Text = "autoConf";
-            this.autoFillConflictButton.UseVisualStyleBackColor = true;
-            this.autoFillConflictButton.Click += new System.EventHandler(this.autoFillConflictButton_Click);
             // 
             // logOutButton
             // 
@@ -204,8 +179,6 @@
             this.Controls.Add(this.welcomeBackLabel);
             this.Controls.Add(this.closeButton);
             this.Controls.Add(this.logOutButton);
-            this.Controls.Add(this.autoFillConflictButton);
-            this.Controls.Add(this.autoFillButton);
             this.Controls.Add(this.simulateButton);
             this.Controls.Add(this.presetsButton);
             this.Controls.Add(this.titleLabel);
@@ -224,8 +197,6 @@
         private System.Windows.Forms.Label titleLabel;
         private System.Windows.Forms.Button presetsButton;
         private System.Windows.Forms.Button simulateButton;
-        private System.Windows.Forms.Button autoFillButton;
-        private System.Windows.Forms.Button autoFillConflictButton;
         private System.Windows.Forms.Button logOutButton;
         private System.Windows.Forms.Button closeButton;
         private System.Windows.Forms.Label welcomeBackLabel;
