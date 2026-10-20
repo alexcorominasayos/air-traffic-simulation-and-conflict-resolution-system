@@ -63,84 +63,9 @@ namespace Main_Menu.Properties {
         /// <summary>
         ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap avion_chuleta {
+        internal static System.Drawing.Bitmap Image_Aircraft_Simulator {
             get {
-                object obj = ResourceManager.GetObject("avion_chuleta", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.IO.UnmanagedMemoryStream similar a System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream Brrr_bebesitaa_Sonido_Anuel__Efecto_de_sonido_______ezmp3_cc__ {
-            get {
-                return ResourceManager.GetStream("Brrr_bebesitaa_Sonido_Anuel__Efecto_de_sonido_______ezmp3_cc__", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap Captura_de_pantalla_2024_11_11_214931 {
-            get {
-                object obj = ResourceManager.GetObject("Captura_de_pantalla_2024_11_11_214931", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.IO.UnmanagedMemoryStream similar a System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream El_Alfa__Yandel__Myke_Towers_Dembow_Y_Reggaeton__Letra_ {
-            get {
-                return ResourceManager.GetStream("El_Alfa__Yandel__Myke_Towers_Dembow_Y_Reggaeton__Letra_", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap fp {
-            get {
-                object obj = ResourceManager.GetObject("fp", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.IO.UnmanagedMemoryStream similar a System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream iPhone_Radar_AlarmRingtone__Apple_Sound__Sound_Effect_for_Editing {
-            get {
-                return ResourceManager.GetStream("iPhone_Radar_AlarmRingtone__Apple_Sound__Sound_Effect_for_Editing", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.IO.UnmanagedMemoryStream similar a System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream musicaGTA {
-            get {
-                return ResourceManager.GetStream("musicaGTA", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.IO.UnmanagedMemoryStream similar a System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream MusicDuringGame {
-            get {
-                return ResourceManager.GetStream("MusicDuringGame", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap rgf {
-            get {
-                object obj = ResourceManager.GetObject("rgf", resourceCulture);
+                object obj = ResourceManager.GetObject("Image_Aircraft_Simulator", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -148,9 +73,39 @@ namespace Main_Menu.Properties {
         /// <summary>
         ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap tc {
+        internal static System.Drawing.Bitmap Image_Background_Runway {
             get {
-                object obj = ResourceManager.GetObject("tc", resourceCulture);
+                object obj = ResourceManager.GetObject("Image_Background_Runway", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Image_Background_Simulator {
+            get {
+                object obj = ResourceManager.GetObject("Image_Background_Simulator", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Image_Background_Tower {
+            get {
+                object obj = ResourceManager.GetObject("Image_Background_Tower", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Image_Flight_Plan {
+            get {
+                object obj = ResourceManager.GetObject("Image_Flight_Plan", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Main_Menu
@@ -9,14 +6,14 @@ namespace Main_Menu
     internal static class Program
     {
         /// <summary>
-        /// Punto de entrada principal para la aplicación.
+        /// Application entry point. The login screen is the main form: closing it ends the program.
         /// </summary>
         [STAThread]
         static void Main()
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MenuContraseña());
+            Application.Run(new LoginForm());
         }
     }
 }
