@@ -91,13 +91,6 @@ namespace Main_Menu
             this.BackgroundImageLayout = ImageLayout.Center;
             {
                 labelWelcomeBack.Text = "Welcome back, " +usuario+" :)";
-                try
-                {
-                    simpleSound = new SoundPlayer(Properties.Resources.musicaGTA);
-                    simpleSound.Play();
-                }
-                catch (FileNotFoundException)
-                { }
             }
         }
 
@@ -297,17 +290,6 @@ namespace Main_Menu
             }
         }
 
-        private void labelWelcomeBack_Click(object sender, EventArgs e)                //si le das clic suena brr bebesita
-        {
-            try
-            {
-                SoundPlayer brrr = new SoundPlayer(Properties.Resources.Brrr_bebesitaa_Sonido_Anuel__Efecto_de_sonido_______ezmp3_cc__);
-                brrr.Play();
-            }
-            catch (FileNotFoundException)
-            { }
-        }
-
         private void botonCompañias_Click(object sender, EventArgs e)
         {
             MenuCompañiasAereas MCA = new MenuCompañiasAereas();
@@ -329,8 +311,6 @@ namespace Main_Menu
             simpleSound.Stop();
             this.Hide();
 
-            SoundPlayer GameSound = new SoundPlayer(Properties.Resources.MusicDuringGame);
-            GameSound.Play();
             Game.ShowDialog();
             //Game.Stop();
 

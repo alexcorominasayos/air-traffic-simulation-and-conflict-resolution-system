@@ -96,7 +96,7 @@
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.LightBlue;
-            this.panel1.BackgroundImage = global::Main_Menu.Properties.Resources.Captura_de_pantalla_2024_11_11_214931;
+            this.panel1.BackgroundImage = global::Main_Menu.Properties.Resources.Image_Background_Simulator;
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.panel1.Controls.Add(this.CoordinatesTextBox);
             this.panel1.Location = new System.Drawing.Point(325, 23);

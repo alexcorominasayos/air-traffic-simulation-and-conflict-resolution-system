@@ -26,16 +26,13 @@ namespace Main_Menu
         public int TiempoCicloSim { get; set; }
         public int DistanciaSeguridadSim { get; set; }
 
-        SoundPlayer simpleSound = new SoundPlayer(Properties.Resources.iPhone_Radar_AlarmRingtone__Apple_Sound__Sound_Effect_for_Editing);
-        SoundPlayer fondo = new SoundPlayer(Properties.Resources.musicaGTA);
-
         // Se crean variables propias del Simmulator Menu
 
         int TimeInterval = 1000;
 
         int TimeIntervalMod;
 
-        public Image plane = Properties.Resources.avion_chuleta;
+        public Image plane = Properties.Resources.Image_Aircraft_Simulator;
 
         //Se crean listas
         public Stack<FlightPlanList> QposicionesAnterioresVuelos;     //lista para volver atras
@@ -106,7 +103,6 @@ namespace Main_Menu
         private void pintar()            //dibuja los aros y lo otro
         {
             //mueve los aviones antes pq sino lo calcula con la posicion antigua
-            simpleSound.Stop();
             for (int i = 0; i < ListaData.GetNum(); i++)
             {
                 Position X = new Position(ListaData.GetFlightPlan(i).GetCurrentPosition().GetX(),ListaData.GetFlightPlan(i).GetCurrentPosition().GetY());
@@ -129,7 +125,6 @@ namespace Main_Menu
                     {
                         TieneConf[i] = true;
                         TieneConf[k] = true;
-                        simpleSound.Play();
                     }
                 }
             }
@@ -222,7 +217,7 @@ namespace Main_Menu
             typeof(Panel).InvokeMember("DoubleBuffered",
             System.Reflection.BindingFlags.SetProperty | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
             null, panel1, new object[] { true });
-            panel1.BackgroundImage = Properties.Resources.Captura_de_pantalla_2024_11_11_214931;
+            panel1.BackgroundImage = Properties.Resources.Image_Background_Simulator;
             panel1.BackgroundImageLayout = ImageLayout.Stretch;
             this.DoubleBuffered = true;
 
