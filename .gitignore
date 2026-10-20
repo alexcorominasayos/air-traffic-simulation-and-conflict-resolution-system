@@ -5,3 +5,6 @@
 
 # Local email credentials for the Menu project (see Main Menu/smtp.secrets.example.config)
 smtp.secrets.config
+
+# Personal Visual Studio settings
+*.user
