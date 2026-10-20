@@ -12,6 +12,9 @@ namespace FlightLib
     /// </summary>
     public static class KmlExporter
     {
+        /// <summary>Extension of Google Earth files.</summary>
+        public const string Extension = ".kml";
+
         private const string DocumentTitle = "Points and trajectories of the Flight Plans";
         private const string Altitude = "0";
 
@@ -27,19 +30,18 @@ namespace FlightLib
         /// Writes the KML file for the given flights.
         /// </summary>
         /// <param name="flightPlans">Flights to export.</param>
-        /// <param name="filePathWithoutExtension">Destination path; ".kml" is appended.</param>
+        /// <param name="filePath">Full path of the file to write (normally ending in <see cref="Extension"/>).</param>
         /// <returns>The full path of the written file.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="flightPlans"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when the path is empty.</exception>
         /// <exception cref="IOException">Thrown when the file cannot be written.</exception>
-        public static string Export(FlightPlanList flightPlans, string filePathWithoutExtension)
+        public static string Export(FlightPlanList flightPlans, string filePath)
         {
             if (flightPlans == null)
                 throw new ArgumentNullException(nameof(flightPlans));
-            if (string.IsNullOrWhiteSpace(filePathWithoutExtension))
-                throw new ArgumentException("The file name cannot be empty.", nameof(filePathWithoutExtension));
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("The file path cannot be empty.", nameof(filePath));
 
-            string filePath = filePathWithoutExtension + ".kml";
             File.WriteAllText(filePath, BuildDocument(flightPlans), Encoding.UTF8);
             return filePath;
         }
@@ -49,9 +51,9 @@ namespace FlightLib
         /// </summary>
         /// <returns>The full path of the written file.</returns>
         /// <exception cref="System.ComponentModel.Win32Exception">Thrown when no program can open .kml files.</exception>
-        public static string ExportAndOpen(FlightPlanList flightPlans, string filePathWithoutExtension)
+        public static string ExportAndOpen(FlightPlanList flightPlans, string filePath)
         {
-            string filePath = Export(flightPlans, filePathWithoutExtension);
+            Export(flightPlans, filePath);
             Process.Start(new ProcessStartInfo { FileName = filePath, UseShellExecute = true });
             return filePath;
         }

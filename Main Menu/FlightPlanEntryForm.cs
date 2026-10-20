@@ -23,9 +23,9 @@ namespace Main_Menu
         {
             ClearValidationErrors();
 
-            if (!TryReadFlightPlan(out FlightPlan flightPlan))
+            if (!TryReadFlightPlan(out FlightPlan flightPlan, out string readError))
             {
-                MessageBox.Show("Format Error, check again");
+                MessageBox.Show(readError);
                 return;
             }
 
@@ -35,13 +35,16 @@ namespace Main_Menu
             flightPlans.Add(flightPlan);
             ClearInputs();
             UiHelpers.FlashButton(addFlightPlanButton, UiHelpers.SuccessColor, "FP Added", buttonResetTimer);
+            WarnIfFuelIsNotEnough(flightPlan);
         }
 
         /// <summary>
         /// Reads the text boxes into a flight plan. A new flight always starts at its initial position.
         /// </summary>
-        /// <returns>False if any number cannot be parsed.</returns>
-        private bool TryReadFlightPlan(out FlightPlan flightPlan)
+        /// <param name="flightPlan">The flight plan read, or null.</param>
+        /// <param name="error">Why it could not be read, or null.</param>
+        /// <returns>False if any number cannot be parsed or the fuel is not positive.</returns>
+        private bool TryReadFlightPlan(out FlightPlan flightPlan, out string error)
         {
             flightPlan = null;
             if (!UiHelpers.TryParseDouble(initialXTextBox.Text, out double initialX) ||
@@ -49,13 +52,38 @@ namespace Main_Menu
                 !UiHelpers.TryParseDouble(finalXTextBox.Text, out double finalX) ||
                 !UiHelpers.TryParseDouble(finalYTextBox.Text, out double finalY) ||
                 !UiHelpers.TryParseDouble(speedTextBox.Text, out double speed) ||
-                !UiHelpers.TryParseInt(fuelTextBox.Text, out int fuel))
+                !UiHelpers.TryParseDouble(fuelTextBox.Text, out double fuel))
             {
+                error = "Format Error, check again";
+                return false;
+            }
+
+            if (fuel <= 0)
+            {
+                // Checked here because a flight plan can not even be created with negative fuel.
+                fuelTextBox.BackColor = UiHelpers.ErrorColor;
+                error = "The fuel must be positive";
                 return false;
             }
 
             flightPlan = new FlightPlan(transponderTextBox.Text, initialX, initialY, initialX, initialY, finalX, finalY, speed, fuel);
+            error = null;
             return true;
+        }
+
+        /// <summary>
+        /// Warns, without blocking, when the fuel will not last the whole route: the flight is still
+        /// added, because simulating a fuel emergency can be exactly what the user wants to test.
+        /// </summary>
+        private static void WarnIfFuelIsNotEnough(FlightPlan flightPlan)
+        {
+            if (flightPlan.HasEnoughFuelToArrive())
+                return;
+
+            MessageBox.Show(
+                $"Flight {flightPlan.Id} has {flightPlan.Fuel} fuel, but its route needs {Math.Ceiling(flightPlan.GetFuelNeededToArrive())} " +
+                $"({FlightPlan.FuelPerDistanceUnit} per unit of distance). It was added, but it will run out of fuel before arriving.",
+                "Not enough fuel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         /// <summary>Highlights every rule the flight plan breaks.</summary>
@@ -100,7 +128,7 @@ namespace Main_Menu
             UiHelpers.HideMessage(duplicateIdErrorLabel);
             UiHelpers.HideMessage(invalidSpeedErrorLabel);
             UiHelpers.HideMessage(outOfCanvasErrorLabel);
-            foreach (TextBox field in new[] { transponderTextBox, speedTextBox, initialXTextBox, initialYTextBox, finalXTextBox, finalYTextBox })
+            foreach (TextBox field in new[] { transponderTextBox, speedTextBox, initialXTextBox, initialYTextBox, finalXTextBox, finalYTextBox, fuelTextBox })
                 field.BackColor = UiHelpers.NormalColor;
         }
 

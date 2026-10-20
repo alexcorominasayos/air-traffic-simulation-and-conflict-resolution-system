@@ -50,8 +50,6 @@
             this.changeSpeedLabel = new System.Windows.Forms.Label();
             this.saveTextFileLabel = new System.Windows.Forms.Label();
             this.saveButton = new System.Windows.Forms.Button();
-            this.fileNameLabel = new System.Windows.Forms.Label();
-            this.fileNameTextBox = new System.Windows.Forms.TextBox();
             this.viewInGoogleEarthButton = new System.Windows.Forms.Button();
             this.canvasMaxYLabel = new System.Windows.Forms.Label();
             this.canvasMaxXLabel = new System.Windows.Forms.Label();
@@ -238,11 +236,11 @@
             // saveTextFileLabel
             // 
             this.saveTextFileLabel.AutoSize = true;
-            this.saveTextFileLabel.Location = new System.Drawing.Point(118, 497);
+            this.saveTextFileLabel.Location = new System.Drawing.Point(90, 530);
             this.saveTextFileLabel.Name = "saveTextFileLabel";
-            this.saveTextFileLabel.Size = new System.Drawing.Size(82, 13);
+            this.saveTextFileLabel.Size = new System.Drawing.Size(150, 13);
             this.saveTextFileLabel.TabIndex = 24;
-            this.saveTextFileLabel.Text = "Save as text file";
+            this.saveTextFileLabel.Text = "Save or export the simulation";
             // 
             // saveButton
             // 
@@ -250,25 +248,9 @@
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(75, 23);
             this.saveButton.TabIndex = 23;
-            this.saveButton.Text = "Save";
+            this.saveButton.Text = "Save...";
             this.saveButton.UseVisualStyleBackColor = true;
             this.saveButton.Click += new System.EventHandler(this.saveButton_Click);
-            // 
-            // fileNameLabel
-            // 
-            this.fileNameLabel.AutoSize = true;
-            this.fileNameLabel.Location = new System.Drawing.Point(71, 526);
-            this.fileNameLabel.Name = "fileNameLabel";
-            this.fileNameLabel.Size = new System.Drawing.Size(52, 13);
-            this.fileNameLabel.TabIndex = 22;
-            this.fileNameLabel.Text = "Filename:";
-            // 
-            // fileNameTextBox
-            // 
-            this.fileNameTextBox.Location = new System.Drawing.Point(127, 524);
-            this.fileNameTextBox.Name = "fileNameTextBox";
-            this.fileNameTextBox.Size = new System.Drawing.Size(100, 20);
-            this.fileNameTextBox.TabIndex = 21;
             // 
             // viewInGoogleEarthButton
             // 
@@ -276,7 +258,7 @@
             this.viewInGoogleEarthButton.Name = "viewInGoogleEarthButton";
             this.viewInGoogleEarthButton.Size = new System.Drawing.Size(149, 23);
             this.viewInGoogleEarthButton.TabIndex = 25;
-            this.viewInGoogleEarthButton.Text = "Visualize in Google Earth";
+            this.viewInGoogleEarthButton.Text = "Visualize in Google Earth...";
             this.viewInGoogleEarthButton.UseVisualStyleBackColor = true;
             this.viewInGoogleEarthButton.Click += new System.EventHandler(this.viewInGoogleEarthButton_Click);
             // 
@@ -360,8 +342,6 @@
             this.Controls.Add(this.viewInGoogleEarthButton);
             this.Controls.Add(this.saveTextFileLabel);
             this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.fileNameLabel);
-            this.Controls.Add(this.fileNameTextBox);
             this.Controls.Add(this.changeSpeedLabel);
             this.Controls.Add(this.backwardButton);
             this.Controls.Add(this.changeSpeedButton);
@@ -412,8 +392,6 @@
         private System.Windows.Forms.Label changeSpeedLabel;
         private System.Windows.Forms.Label saveTextFileLabel;
         private System.Windows.Forms.Button saveButton;
-        private System.Windows.Forms.Label fileNameLabel;
-        private System.Windows.Forms.TextBox fileNameTextBox;
         private System.Windows.Forms.Label mouseCoordinatesLabel;
         private System.Windows.Forms.Button viewInGoogleEarthButton;
         private System.Windows.Forms.Label canvasMaxYLabel;

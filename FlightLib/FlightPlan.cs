@@ -9,6 +9,11 @@ namespace FlightLib
     /// <remarks>
     /// Speed is expressed in canvas units per minute, while simulation time is expressed in
     /// seconds. That is why <see cref="Move"/> divides by <see cref="SecondsPerMinute"/>.
+    /// <para>
+    /// Fuel is burned in proportion to the distance actually flown (see <see cref="FuelPerDistanceUnit"/>).
+    /// An aircraft that runs out of fuel stops where it is and stays there: it is neither
+    /// "arrived" nor able to keep flying, see <see cref="IsOutOfFuel"/>.
+    /// </para>
     /// </remarks>
     public class FlightPlan
     {
@@ -17,6 +22,13 @@ namespace FlightLib
 
         /// <summary>How much the speed is reduced on every attempt when resolving a conflict.</summary>
         private const double SpeedReductionStep = 0.1;
+
+        /// <summary>
+        /// Fuel units burned per canvas unit flown. Chosen so that a typical flight (speed 25 with a
+        /// 60-second cycle, i.e. 25 units per cycle) burns 20 units per cycle, the same amount the
+        /// earlier fixed-per-cycle model used, so existing scenarios behave similarly.
+        /// </summary>
+        public const double FuelPerDistanceUnit = 0.8;
 
         /// <summary>Flight identifier (transponder / call sign). The first three letters identify the airline.</summary>
         public string Id { get; }
@@ -33,8 +45,11 @@ namespace FlightLib
         /// <summary>Ground speed, in canvas units per minute.</summary>
         public double Speed { get; set; }
 
-        /// <summary>Remaining fuel units.</summary>
-        public int Fuel { get; set; }
+        /// <summary>Remaining fuel units. Never negative.</summary>
+        public double Fuel { get; private set; }
+
+        /// <summary>Fuel the flight had at the start of its route; restored when the flight is reset.</summary>
+        public double InitialFuel { get; }
 
         /// <summary>
         /// Creates a flight plan.
@@ -47,17 +62,28 @@ namespace FlightLib
         /// <param name="finalX">X coordinate where the route ends.</param>
         /// <param name="finalY">Y coordinate where the route ends.</param>
         /// <param name="speed">Ground speed, in canvas units per minute.</param>
-        /// <param name="fuel">Initial fuel units.</param>
+        /// <param name="fuel">Fuel the aircraft has now.</param>
+        /// <param name="initialFuel">
+        /// Fuel it had at the start of the route. Leave it out for a new flight (it is then the same as
+        /// <paramref name="fuel"/>); pass it when restoring a flight that is already halfway.
+        /// </param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when a fuel amount is negative.</exception>
         public FlightPlan(string id, double initialX, double initialY, double currentX, double currentY,
-                          double finalX, double finalY, double speed, int fuel)
+                          double finalX, double finalY, double speed, double fuel, double? initialFuel = null)
         {
+            if (fuel < 0)
+                throw new ArgumentOutOfRangeException(nameof(fuel), "Fuel can not be negative.");
+            if (initialFuel < 0)
+                throw new ArgumentOutOfRangeException(nameof(initialFuel), "Fuel can not be negative.");
+
             Id = id ?? throw new ArgumentNullException(nameof(id));
             InitialPosition = new Position(initialX, initialY);
             CurrentPosition = new Position(currentX, currentY);
             FinalPosition = new Position(finalX, finalY);
             Speed = speed;
             Fuel = fuel;
+            InitialFuel = initialFuel ?? fuel;
         }
 
         /// <summary>
@@ -74,19 +100,28 @@ namespace FlightLib
         }
 
         /// <summary>
-        /// Advances the aircraft along its route for the given amount of time.
-        /// The aircraft never overshoots its destination: if it would, it stops on it.
+        /// Advances the aircraft along its route for the given amount of time and burns the fuel
+        /// needed for the distance flown. The aircraft never overshoots its destination, and if the
+        /// fuel runs out on the way it stops at the point where the tank became empty.
         /// </summary>
         /// <param name="elapsedSeconds">Simulated time to advance, in seconds.</param>
         public void Move(double elapsedSeconds)
         {
-            double distanceToTravel = elapsedSeconds * Speed / SecondsPerMinute;
-            double remainingDistance = CurrentPosition.DistanceTo(FinalPosition);
+            if (!CanKeepFlying())
+                return;
 
-            // Also covers the "already at destination" case, where there is no direction to follow.
-            if (Math.Abs(distanceToTravel) >= remainingDistance)
+            double remainingDistance = GetRemainingDistance();
+            double distanceAllowedByFuel = Fuel / FuelPerDistanceUnit;
+            double distanceToTravel = Math.Min(elapsedSeconds * Speed / SecondsPerMinute,
+                                               Math.Min(remainingDistance, distanceAllowedByFuel));
+            if (distanceToTravel <= 0)
+                return;
+
+            BurnFuelFor(distanceToTravel);
+
+            if (distanceToTravel >= remainingDistance)
             {
-                CurrentPosition = FinalPosition;
+                CurrentPosition = FinalPosition; // Snap exactly onto the destination.
                 return;
             }
 
@@ -103,10 +138,50 @@ namespace FlightLib
             return CurrentPosition.HasSameCoordinatesAs(FinalPosition);
         }
 
-        /// <summary>Puts the aircraft back at the start of its route.</summary>
+        /// <summary>Returns true when the tank is empty before reaching the destination.</summary>
+        public bool IsOutOfFuel()
+        {
+            return Fuel <= 0 && !HasArrived();
+        }
+
+        /// <summary>Returns true while the aircraft is still on its way and has fuel left.</summary>
+        public bool CanKeepFlying()
+        {
+            return !HasArrived() && Fuel > 0;
+        }
+
+        /// <summary>Distance left to the destination, in canvas units.</summary>
+        public double GetRemainingDistance()
+        {
+            return CurrentPosition.DistanceTo(FinalPosition);
+        }
+
+        /// <summary>Fuel needed to fly from the current position to the destination.</summary>
+        public double GetFuelNeededToArrive()
+        {
+            return GetRemainingDistance() * FuelPerDistanceUnit;
+        }
+
+        /// <summary>
+        /// Returns true when the remaining fuel is enough to reach the destination. A tiny tolerance
+        /// absorbs floating point rounding, so a tank that is "exactly enough" counts as enough.
+        /// </summary>
+        public bool HasEnoughFuelToArrive()
+        {
+            const double RoundingTolerance = 1e-9;
+            return Fuel + RoundingTolerance >= GetFuelNeededToArrive();
+        }
+
+        /// <summary>Puts the aircraft back at the start of its route with the fuel it started with.</summary>
         public void ResetToInitialPosition()
         {
             CurrentPosition = InitialPosition;
+            Fuel = InitialFuel;
+        }
+
+        private void BurnFuelFor(double distance)
+        {
+            Fuel = Math.Max(0, Fuel - distance * FuelPerDistanceUnit);
         }
 
         /// <summary>

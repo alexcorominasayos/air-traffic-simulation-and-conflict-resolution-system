@@ -192,6 +192,7 @@
       <DependentUpon>MainMenuForm.cs</DependentUpon>
     </Compile>
     <Compile Include="EmailNotifier.cs" />
+    <Compile Include="FileDialogs.cs" />
     <Compile Include="PasswordRules.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="UiHelpers.cs" />

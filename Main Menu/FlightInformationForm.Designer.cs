@@ -149,7 +149,7 @@
             this.fuelTextBox.Location = new System.Drawing.Point(167, 255);
             this.fuelTextBox.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.fuelTextBox.Name = "fuelTextBox";
-            this.fuelTextBox.Size = new System.Drawing.Size(116, 22);
+            this.fuelTextBox.Size = new System.Drawing.Size(180, 22);
             this.fuelTextBox.TabIndex = 24;
             // 
             // FlightInformationForm

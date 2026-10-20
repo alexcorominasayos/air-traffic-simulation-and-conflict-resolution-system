@@ -66,27 +66,26 @@ namespace FlightLib
         }
 
         /// <summary>
-        /// Advances every flight for the given amount of time. Does nothing once all flights have arrived.
+        /// Returns true while at least one flight is still on its way with fuel left, i.e. while
+        /// advancing the simulation can still change something.
+        /// </summary>
+        public bool AnyCanKeepFlying()
+        {
+            return flightPlans.Any(flightPlan => flightPlan.CanKeepFlying());
+        }
+
+        /// <summary>
+        /// Advances every flight for the given amount of time, burning their fuel. Flights that have
+        /// arrived or run out of fuel stay where they are.
         /// </summary>
         /// <param name="elapsedSeconds">Simulated time to advance, in seconds.</param>
         public void Move(double elapsedSeconds)
         {
-            if (AllHaveArrived())
-                return;
-
             foreach (FlightPlan flightPlan in flightPlans)
                 flightPlan.Move(elapsedSeconds);
         }
 
-        /// <summary>Adds (or removes, when negative) the same amount of fuel to every flight.</summary>
-        /// <param name="fuelDelta">Fuel units to add to each flight.</param>
-        public void AdjustFuel(int fuelDelta)
-        {
-            foreach (FlightPlan flightPlan in flightPlans)
-                flightPlan.Fuel += fuelDelta;
-        }
-
-        /// <summary>Puts every flight back at the start of its route.</summary>
+        /// <summary>Puts every flight back at the start of its route with its initial fuel.</summary>
         public void ResetToInitialPositions()
         {
             foreach (FlightPlan flightPlan in flightPlans)

@@ -25,7 +25,7 @@ namespace Main_Menu
             xTextBox.Text = Convert.ToString(Math.Round(flight.CurrentPosition.X, 2));
             yTextBox.Text = Convert.ToString(Math.Round(flight.CurrentPosition.Y, 2));
             speedTextBox.Text = Convert.ToString(Math.Round(flight.Speed, 2));
-            fuelTextBox.Text = Convert.ToString(flight.Fuel);
+            fuelTextBox.Text = UiHelpers.DescribeFuel(flight);
         }
 
         private void closeButton_Click(object sender, EventArgs e)

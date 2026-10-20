@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using FlightLib;
 
 namespace Main_Menu
 {
@@ -96,6 +97,20 @@ namespace Main_Menu
         public static bool TryParseInt(string text, out int value)
         {
             return int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out value);
+        }
+
+        /// <summary>
+        /// Short text with a flight's remaining fuel and, when relevant, a warning: whether it will
+        /// not last until the destination, or it is already empty.
+        /// </summary>
+        public static string DescribeFuel(FlightPlan flight)
+        {
+            string amount = Math.Round(flight.Fuel, 1).ToString(CultureInfo.CurrentCulture);
+            if (flight.IsOutOfFuel())
+                return amount + " (OUT OF FUEL)";
+            if (!flight.HasArrived() && !flight.HasEnoughFuelToArrive())
+                return amount + $" (needs {Math.Ceiling(flight.GetFuelNeededToArrive())} to arrive)";
+            return amount;
         }
 
         /// <summary>Shows an unexpected error in a message box, keeping the application running.</summary>

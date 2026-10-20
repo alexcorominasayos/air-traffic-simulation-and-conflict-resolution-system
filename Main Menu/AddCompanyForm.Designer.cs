@@ -37,6 +37,7 @@
             this.emailTextBox = new System.Windows.Forms.TextBox();
             this.emailLabel = new System.Windows.Forms.Label();
             this.logoPathTextBox = new System.Windows.Forms.TextBox();
+            this.browseLogoButton = new System.Windows.Forms.Button();
             this.logoPathLabel = new System.Windows.Forms.Label();
             this.closeDelayTimer = new System.Windows.Forms.Timer(this.components);
             this.identifierTextBox = new System.Windows.Forms.TextBox();
@@ -109,6 +110,16 @@
             this.logoPathTextBox.Size = new System.Drawing.Size(100, 20);
             this.logoPathTextBox.TabIndex = 8;
             // 
+            // browseLogoButton
+            // 
+            this.browseLogoButton.Location = new System.Drawing.Point(296, 229);
+            this.browseLogoButton.Name = "browseLogoButton";
+            this.browseLogoButton.Size = new System.Drawing.Size(75, 23);
+            this.browseLogoButton.TabIndex = 12;
+            this.browseLogoButton.Text = "Browse...";
+            this.browseLogoButton.UseVisualStyleBackColor = true;
+            this.browseLogoButton.Click += new System.EventHandler(this.browseLogoButton_Click);
+            // 
             // logoPathLabel
             // 
             this.logoPathLabel.AutoSize = true;
@@ -141,11 +152,11 @@
             // logoPathHintLabel
             // 
             this.logoPathHintLabel.AutoSize = true;
-            this.logoPathHintLabel.Location = new System.Drawing.Point(109, 351);
+            this.logoPathHintLabel.Location = new System.Drawing.Point(80, 351);
             this.logoPathHintLabel.Name = "logoPathHintLabel";
-            this.logoPathHintLabel.Size = new System.Drawing.Size(160, 13);
+            this.logoPathHintLabel.Size = new System.Drawing.Size(270, 13);
             this.logoPathHintLabel.TabIndex = 11;
-            this.logoPathHintLabel.Text = "*Quotes around the path are removed automatically";
+            this.logoPathHintLabel.Text = "*Click Browse... to choose an image, or paste its path";
             // 
             // AddCompanyForm
             // 
@@ -155,6 +166,7 @@
             this.Controls.Add(this.logoPathHintLabel);
             this.Controls.Add(this.identifierTextBox);
             this.Controls.Add(this.identifierLabel);
+            this.Controls.Add(this.browseLogoButton);
             this.Controls.Add(this.logoPathTextBox);
             this.Controls.Add(this.logoPathLabel);
             this.Controls.Add(this.emailTextBox);
@@ -181,6 +193,7 @@
         private System.Windows.Forms.TextBox emailTextBox;
         private System.Windows.Forms.Label emailLabel;
         private System.Windows.Forms.TextBox logoPathTextBox;
+        private System.Windows.Forms.Button browseLogoButton;
         private System.Windows.Forms.Label logoPathLabel;
         private System.Windows.Forms.Timer closeDelayTimer;
         private System.Windows.Forms.TextBox identifierTextBox;
