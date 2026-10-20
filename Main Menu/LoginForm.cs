@@ -102,11 +102,9 @@ namespace Main_Menu
         {
             try
             {
+                // Opening also creates the tables on first run and hashes any old plain-text passwords.
                 using (DatabaseService database = new DatabaseService())
-                {
                     database.Open();
-                    database.GetUsers();
-                }
                 return true;
             }
             catch (DbException)

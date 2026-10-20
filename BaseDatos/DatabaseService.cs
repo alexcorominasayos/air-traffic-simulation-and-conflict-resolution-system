@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
 using System.IO;
@@ -14,10 +15,15 @@ namespace BaseDatos
     /// </remarks>
     public sealed class DatabaseService : IDisposable
     {
+        /// <summary>Name of the database file, created next to the executable if it does not exist.</summary>
+        public const string DatabaseFileName = "BD.db";
+
         /// <summary>
-        /// The database file is looked up next to the executable (it is copied to the output folder).
+        /// Full path of the default database file. It is resolved from the executable's folder (not
+        /// the current working folder), so starting the program from a shortcut or another folder
+        /// still opens the same database instead of silently creating a new empty one.
         /// </summary>
-        public const string DefaultConnectionString = "Data Source=BD.db";
+        public static string DefaultDatabasePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DatabaseFileName);
 
         // Table and column names are part of the existing BD.db schema. Some of them are in
         // Spanish because renaming them would require migrating every existing database file.
@@ -48,7 +54,7 @@ namespace BaseDatos
         private SQLiteConnection connection;
 
         /// <summary>Creates a service that uses the default <c>BD.db</c> file.</summary>
-        public DatabaseService() : this(DefaultConnectionString)
+        public DatabaseService() : this(ToConnectionString(DefaultDatabasePath))
         {
         }
 
@@ -61,12 +67,20 @@ namespace BaseDatos
             this.connectionString = connectionString;
         }
 
+        /// <summary>Builds an SQLite connection string for a database file.</summary>
+        public static string ToConnectionString(string databaseFilePath)
+        {
+            return new SQLiteConnectionStringBuilder { DataSource = databaseFilePath }.ConnectionString;
+        }
+
         /// <summary>
-        /// Opens the connection and makes sure the companies table exists.
+        /// Opens the connection and prepares the database: creates any missing table and converts
+        /// passwords that are still stored as plain text into hashes.
         /// </summary>
         /// <remarks>
-        /// Some copies of BD.db were created before the companies feature existed. Creating the
-        /// table on demand keeps those databases working instead of failing on the first query.
+        /// SQLite creates the file when it does not exist, so together with the table creation a
+        /// fresh copy of the project works without shipping a database file. Older copies of BD.db
+        /// that lack the companies table, or still hold plain-text passwords, are upgraded in place.
         /// </remarks>
         /// <exception cref="SQLiteException">Thrown when the database cannot be opened.</exception>
         public void Open()
@@ -76,7 +90,9 @@ namespace BaseDatos
 
             connection = new SQLiteConnection(connectionString);
             connection.Open();
+            EnsureUsersTableExists();
             EnsureCompaniesTableExists();
+            HashPlainTextPasswords();
         }
 
         /// <summary>Closes the connection. Safe to call more than once.</summary>
@@ -93,22 +109,24 @@ namespace BaseDatos
             Close();
         }
 
-        /// <summary>Returns every registered user.</summary>
-        public DataTable GetUsers()
-        {
-            return Query($"SELECT * FROM {UsersTable}");
-        }
-
-        /// <summary>Returns true when a user with this name and password exists.</summary>
+        /// <summary>Returns true when a user with this name exists and <paramref name="password"/> is theirs.</summary>
         public bool AreCredentialsValid(string userName, string password)
         {
             using (SQLiteCommand command = CreateCommand(
-                $"SELECT COUNT(*) FROM {UsersTable} WHERE {UserNameColumn} = @name AND {UserPasswordColumn} = @password"))
+                $"SELECT {UserPasswordColumn} FROM {UsersTable} WHERE {UserNameColumn} = @name"))
             {
                 command.Parameters.AddWithValue("@name", userName);
-                command.Parameters.AddWithValue("@password", password);
-                return Convert.ToInt64(command.ExecuteScalar()) > 0;
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    // The name column is not enforced as unique by the old schema, so check every match.
+                    while (reader.Read())
+                    {
+                        if (!reader.IsDBNull(0) && PasswordHasher.Verify(password, reader.GetString(0)))
+                            return true;
+                    }
+                }
             }
+            return false;
         }
 
         /// <summary>Returns true when the user name is already taken.</summary>
@@ -132,7 +150,7 @@ namespace BaseDatos
                 $"VALUES (@name, @password, @email, (SELECT COALESCE(MAX({UserIdColumn}), 0) + 1 FROM {UsersTable}))"))
             {
                 command.Parameters.AddWithValue("@name", userName);
-                command.Parameters.AddWithValue("@password", password);
+                command.Parameters.AddWithValue("@password", PasswordHasher.Hash(password));
                 command.Parameters.AddWithValue("@email", email);
                 command.ExecuteNonQuery();
             }
@@ -145,7 +163,7 @@ namespace BaseDatos
             using (SQLiteCommand command = CreateCommand(
                 $"UPDATE {UsersTable} SET {UserPasswordColumn} = @password WHERE {UserEmailColumn} = @email"))
             {
-                command.Parameters.AddWithValue("@password", newPassword);
+                command.Parameters.AddWithValue("@password", PasswordHasher.Hash(newPassword));
                 command.Parameters.AddWithValue("@email", email);
                 return command.ExecuteNonQuery() > 0;
             }
@@ -209,6 +227,59 @@ namespace BaseDatos
             {
                 command.Parameters.AddWithValue("@name", name);
                 return command.ExecuteNonQuery() > 0;
+            }
+        }
+
+        private void EnsureUsersTableExists()
+        {
+            // "primarykey" (without a space) is kept exactly as in the original schema: SQLite reads it
+            // as part of the type name, so user names are not enforced as unique by the database.
+            // UserNameExists() is what prevents duplicates when registering.
+            using (SQLiteCommand command = CreateCommand(
+                $"CREATE TABLE IF NOT EXISTS {UsersTable} (" +
+                $"{UserNameColumn} varchar primarykey, {UserPasswordColumn} varchar, {UserEmailColumn} varchar, {UserIdColumn} integer)"))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// Replaces every plain-text password with its hash. Users keep logging in with the same
+        /// password; only what is stored changes. Runs in a transaction so a failure leaves the
+        /// database as it was.
+        /// </summary>
+        private void HashPlainTextPasswords()
+        {
+            List<(long RowId, string Password)> plainTextPasswords = new List<(long, string)>();
+            using (SQLiteCommand command = CreateCommand(
+                $"SELECT rowid, {UserPasswordColumn} FROM {UsersTable} " +
+                $"WHERE {UserPasswordColumn} IS NOT NULL AND substr({UserPasswordColumn}, 1, @prefixLength) <> @prefix"))
+            {
+                command.Parameters.AddWithValue("@prefixLength", PasswordHasher.HashPrefix.Length);
+                command.Parameters.AddWithValue("@prefix", PasswordHasher.HashPrefix);
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                        plainTextPasswords.Add((reader.GetInt64(0), Convert.ToString(reader.GetValue(1))));
+                }
+            }
+
+            if (plainTextPasswords.Count == 0)
+                return;
+
+            using (SQLiteTransaction transaction = connection.BeginTransaction())
+            {
+                foreach ((long rowId, string password) in plainTextPasswords)
+                {
+                    using (SQLiteCommand update = CreateCommand($"UPDATE {UsersTable} SET {UserPasswordColumn} = @hash WHERE rowid = @rowId"))
+                    {
+                        update.Transaction = transaction;
+                        update.Parameters.AddWithValue("@hash", PasswordHasher.Hash(password));
+                        update.Parameters.AddWithValue("@rowId", rowId);
+                        update.ExecuteNonQuery();
+                    }
+                }
+                transaction.Commit();
             }
         }
 
