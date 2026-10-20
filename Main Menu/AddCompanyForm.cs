@@ -22,6 +22,12 @@ namespace Main_Menu
         /// <summary>True if a company was stored, so the caller knows it must refresh its list.</summary>
         public bool CompanyAdded { get; private set; }
 
+        private void browseLogoButton_Click(object sender, EventArgs e)
+        {
+            if (FileDialogs.TryChooseImage(this, out string imagePath))
+                logoPathTextBox.Text = imagePath;
+        }
+
         private void addButton_Click(object sender, EventArgs e)
         {
             phoneTextBox.BackColor = UiHelpers.NormalColor;

@@ -16,18 +16,23 @@ namespace Main_Menu
     /// </summary>
     public partial class SimulatorForm : Form
     {
-        /// <summary>Fuel every flight burns in one cycle.</summary>
-        private const int FuelPerCycle = 20;
-
-        /// <summary>Fuel added to every flight when the user leaves the simulator (flights go back to their start).</summary>
-        private const int RefuelOnExit = 2000;
-
         /// <summary>Automatic mode's default delay between cycles; the speed bar adds or removes time from it.</summary>
         private const int BaseAutomaticIntervalMilliseconds = 1000;
 
         private const int AircraftIconSize = 35;
         private const int FlightHotspotSize = 10;
-        private const int FlightLabelVerticalOffset = 15;
+        private const int FlightLabelVerticalOffset = 26;
+
+        // Background of each flight's label, so fuel problems are visible at a glance.
+        private static readonly Color NormalLabelColor = Color.DimGray;
+        private static readonly Color LowFuelLabelColor = Color.DarkOrange;
+        private static readonly Color OutOfFuelLabelColor = Color.Firebrick;
+
+        /// <summary>
+        /// Flights whose "out of fuel" alert was already shown, so the message appears once per
+        /// flight instead of on every cycle.
+        /// </summary>
+        private readonly HashSet<string> outOfFuelAlertsShown = new HashSet<string>();
 
         private readonly Image aircraftIcon = Properties.Resources.Image_Aircraft_Simulator;
 
@@ -144,13 +149,42 @@ namespace Main_Menu
         /// </summary>
         private void AdvanceOneCycle()
         {
-            if (FlightPlans.AllHaveArrived())
+            // Nothing can change once every flight has arrived or run out of fuel, so no undo
+            // step is recorded either.
+            if (!FlightPlans.AnyCanKeepFlying())
                 return;
 
             History.Push(FlightPlans.Clone());
-            FlightPlans.Move(CycleTime);
-            FlightPlans.AdjustFuel(-FuelPerCycle);
+            FlightPlans.Move(CycleTime); // Each flight burns fuel for the distance it actually flew.
             RefreshFlightsView();
+            AlertFlightsThatRanOutOfFuel();
+        }
+
+        /// <summary>
+        /// Tells the user, once per flight, that an aircraft ran out of fuel before its destination.
+        /// Automatic mode is stopped first: a timer keeps ticking behind a message box, which would
+        /// otherwise keep advancing the simulation while the user reads the message.
+        /// </summary>
+        private void AlertFlightsThatRanOutOfFuel()
+        {
+            List<FlightPlan> newlyOutOfFuel = FlightPlans.FlightPlans
+                .Where(flight => flight.IsOutOfFuel() && !outOfFuelAlertsShown.Contains(flight.Id))
+                .ToList();
+            if (newlyOutOfFuel.Count == 0)
+                return;
+
+            bool wasAutomatic = automaticMoveTimer.Enabled;
+            automaticMoveTimer.Stop();
+            foreach (FlightPlan flight in newlyOutOfFuel)
+                outOfFuelAlertsShown.Add(flight.Id);
+
+            string flightList = string.Join("\n", newlyOutOfFuel.Select(flight =>
+                $"{flight.Id} at ({Math.Round(flight.CurrentPosition.X, 1)}, {Math.Round(flight.CurrentPosition.Y, 1)}), " +
+                $"{Math.Round(flight.GetRemainingDistance(), 1)} units before its destination"));
+            MessageBox.Show(
+                "These flights have run out of fuel and can not continue:\n\n" + flightList +
+                (wasAutomatic ? "\n\nAutomatic mode has been stopped." : ""),
+                "Out of fuel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private void backwardButton_Click(object sender, EventArgs e)
@@ -194,8 +228,7 @@ namespace Main_Menu
         private void goBackButton_Click(object sender, EventArgs e)
         {
             automaticMoveTimer.Stop();
-            FlightPlans.ResetToInitialPositions();
-            FlightPlans.AdjustFuel(RefuelOnExit);
+            FlightPlans.ResetToInitialPositions(); // Also refuels every flight to its initial fuel.
             Close();
         }
 
@@ -210,6 +243,9 @@ namespace Main_Menu
                 int halfHotspot = FlightHotspotSize / 2;
                 flightHotspots[flightIndex].Location = new Point(Convert.ToInt32(position.X) - halfHotspot, Convert.ToInt32(position.Y) - halfHotspot);
             }
+
+            // After an undo or a restart a flight may have fuel again; alert again if it runs out later.
+            outOfFuelAlertsShown.RemoveWhere(id => FlightPlans.FindById(id)?.IsOutOfFuel() != true);
 
             RefreshFlightLabels();
             simulationPanel.Invalidate();
@@ -241,14 +277,29 @@ namespace Main_Menu
             // Placed above and to the right of the aircraft, outside its safety circle.
             return new Label
             {
-                BackColor = Color.DimGray,
-                Text = flight.Id + "\nVel: " + flight.Speed + " GS (x10)\nPos: (" + x + ", " + y + ")",
+                BackColor = GetFuelStatusColor(flight),
+                Text = flight.Id + "\nVel: " + flight.Speed + " GS (x10)\nPos: (" + x + ", " + y + ")\n" + DescribeFuel(flight),
                 Font = new Font("Times New Roman", 7),
                 AutoSize = true,
                 Location = new Point(
                     Convert.ToInt32(x) + SafetyDistance / 2,
                     Convert.ToInt32(y) - FlightLabelVerticalOffset - SafetyDistance),
             };
+        }
+
+        private static string DescribeFuel(FlightPlan flight)
+        {
+            return "Fuel: " + UiHelpers.DescribeFuel(flight);
+        }
+
+        /// <summary>Grey when fuel is fine, orange when it will not last to the destination, red when empty.</summary>
+        private static Color GetFuelStatusColor(FlightPlan flight)
+        {
+            if (flight.IsOutOfFuel())
+                return OutOfFuelLabelColor;
+            if (!flight.HasArrived() && !flight.HasEnoughFuelToArrive())
+                return LowFuelLabelColor;
+            return NormalLabelColor;
         }
 
         private void simulationPanel_Paint(object sender, PaintEventArgs e)
@@ -388,16 +439,14 @@ namespace Main_Menu
 
         private void saveButton_Click(object sender, EventArgs e)
         {
-            string fileName = fileNameTextBox.Text;
-            if (fileName == "")
-            {
-                MessageBox.Show("The name can not be empty");
+            // Stop automatic mode so the saved state is the one on screen when the user clicked.
+            automaticMoveTimer.Stop();
+            if (!FileDialogs.TryChooseSimulationSaveLocation(this, out string filePath))
                 return;
-            }
 
             try
             {
-                SimulationFile.Save(fileName, new SimulationSnapshot
+                SimulationFile.Save(filePath, new SimulationSnapshot
                 {
                     CycleTime = CycleTime,
                     SafetyDistance = SafetyDistance,
@@ -415,17 +464,14 @@ namespace Main_Menu
 
         private void viewInGoogleEarthButton_Click(object sender, EventArgs e)
         {
-            string fileName = fileNameTextBox.Text;
-            if (fileName == "")
-            {
-                MessageBox.Show("The name can not be empty");
-                return;
-            }
-
+            automaticMoveTimer.Stop();
             MessageBox.Show("You need to have Google Earth installed for the correct working");
+            if (!FileDialogs.TryChooseKmlSaveLocation(this, out string filePath))
+                return;
+
             try
             {
-                KmlExporter.ExportAndOpen(FlightPlans, fileName);
+                KmlExporter.ExportAndOpen(FlightPlans, filePath);
                 viewInGoogleEarthButton.BackColor = UiHelpers.SuccessColor;
             }
             catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException ||

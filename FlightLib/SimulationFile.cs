@@ -31,40 +31,43 @@ namespace FlightLib
     /// <code>
     /// TC DS
     /// &lt;cycle time&gt; &lt;safety distance&gt;
-    /// Transponder xi yi cx cy xf yf velocidad combustible
+    /// Transponder xi yi cx cy xf yf velocidad combustible initialFuel
     /// &lt;one line per flight&gt;
     /// -
     /// &lt;history: one block of N flight lines per previous state, most recent first&gt;
     /// </code>
+    /// The last value of each flight line (initial fuel) was added later; files without it still
+    /// load, and their current fuel is then used as the initial fuel.
     /// Numbers use the computer's regional format (for example "12,5" on a Spanish Windows).
     /// That is kept on purpose so files saved by earlier versions of the program still load.
     /// </remarks>
     public static class SimulationFile
     {
-        /// <summary>Extension appended to the file name typed by the user.</summary>
+        /// <summary>Usual extension of simulation files.</summary>
         public const string Extension = ".txt";
 
         private const string SettingsHeader = "TC DS";
-        private const string FlightsHeader = "Transponder xi yi cx cy xf yf velocidad combustible";
+        private const string FlightsHeader = "Transponder xi yi cx cy xf yf velocidad combustible initialFuel";
         private const string HistorySeparator = "-";
-        private const int FieldsPerFlight = 9;
+        private const int MinimumFieldsPerFlight = 9;
+        private const int InitialFuelField = 9;
 
         /// <summary>
         /// Saves the simulation. The history is written without being modified, so the user can
         /// keep undoing after saving.
         /// </summary>
-        /// <param name="filePathWithoutExtension">Destination path; <see cref="Extension"/> is appended.</param>
+        /// <param name="filePath">Full path of the file to write.</param>
         /// <param name="snapshot">What to save.</param>
         /// <exception cref="ArgumentException">Thrown when the path is empty.</exception>
         /// <exception cref="IOException">Thrown when the file cannot be written.</exception>
-        public static void Save(string filePathWithoutExtension, SimulationSnapshot snapshot)
+        public static void Save(string filePath, SimulationSnapshot snapshot)
         {
-            if (string.IsNullOrWhiteSpace(filePathWithoutExtension))
-                throw new ArgumentException("The file name cannot be empty.", nameof(filePathWithoutExtension));
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("The file path cannot be empty.", nameof(filePath));
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            using (StreamWriter writer = new StreamWriter(filePathWithoutExtension + Extension))
+            using (StreamWriter writer = new StreamWriter(filePath))
             {
                 writer.WriteLine(SettingsHeader);
                 writer.WriteLine($"{snapshot.CycleTime} {snapshot.SafetyDistance}");
@@ -81,12 +84,12 @@ namespace FlightLib
         /// <summary>
         /// Loads a simulation previously written by <see cref="Save"/>.
         /// </summary>
-        /// <param name="filePathWithoutExtension">Source path; <see cref="Extension"/> is appended.</param>
+        /// <param name="filePath">Full path of the file to read.</param>
         /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
         /// <exception cref="FormatException">Thrown when the content does not follow the expected layout.</exception>
-        public static SimulationSnapshot Load(string filePathWithoutExtension)
+        public static SimulationSnapshot Load(string filePath)
         {
-            string[] lines = File.ReadAllLines(filePathWithoutExtension + Extension)
+            string[] lines = File.ReadAllLines(filePath)
                                  .Where(line => !string.IsNullOrWhiteSpace(line))
                                  .ToArray();
             if (lines.Length < 3)
@@ -113,7 +116,7 @@ namespace FlightLib
             {
                 writer.WriteLine($"{flight.Id} {flight.InitialPosition.X} {flight.InitialPosition.Y} " +
                                  $"{flight.CurrentPosition.X} {flight.CurrentPosition.Y} " +
-                                 $"{flight.FinalPosition.X} {flight.FinalPosition.Y} {flight.Speed} {flight.Fuel}");
+                                 $"{flight.FinalPosition.X} {flight.FinalPosition.Y} {flight.Speed} {flight.Fuel} {flight.InitialFuel}");
             }
         }
 
@@ -157,8 +160,13 @@ namespace FlightLib
         private static FlightPlan ParseFlight(string line)
         {
             string[] fields = line.Split(' ');
-            if (fields.Length < FieldsPerFlight)
-                throw new FormatException($"Expected {FieldsPerFlight} values in the flight line \"{line}\".");
+            if (fields.Length < MinimumFieldsPerFlight)
+                throw new FormatException($"Expected at least {MinimumFieldsPerFlight} values in the flight line \"{line}\".");
+
+            double fuel = Convert.ToDouble(fields[8]);
+            double? initialFuel = fields.Length > InitialFuelField ? Convert.ToDouble(fields[InitialFuelField]) : (double?)null;
+            if (fuel < 0 || initialFuel < 0)
+                throw new FormatException($"Negative fuel in the flight line \"{line}\".");
 
             return new FlightPlan(
                 id: fields[0],
@@ -169,7 +177,8 @@ namespace FlightLib
                 finalX: Convert.ToDouble(fields[5]),
                 finalY: Convert.ToDouble(fields[6]),
                 speed: Convert.ToDouble(fields[7]),
-                fuel: Convert.ToInt32(fields[8]));
+                fuel: fuel,
+                initialFuel: initialFuel);
         }
     }
 }

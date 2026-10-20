@@ -23,9 +23,12 @@ namespace Main_Menu
 
         private void loadButton_Click(object sender, EventArgs e)
         {
+            if (!FileDialogs.TryChooseSimulationToOpen(this, out string filePath))
+                return; // Cancelled: keep the form open so the user can try again or close it.
+
             try
             {
-                LoadedSimulation = SimulationFile.Load(fileNameTextBox.Text);
+                LoadedSimulation = SimulationFile.Load(filePath);
             }
             catch (Exception exception) when (exception is FileNotFoundException || exception is DirectoryNotFoundException)
             {
@@ -34,12 +37,11 @@ namespace Main_Menu
             }
             catch (Exception exception) when (exception is FormatException || exception is OverflowException)
             {
-                ShowFailure("Format error");
+                ShowFailure("Not a valid simulation file");
                 return;
             }
-            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ArgumentException)
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
             {
-                // ArgumentException: the name contains characters that are not valid in a path.
                 ShowFailure("File can not be read");
                 return;
             }
@@ -54,7 +56,7 @@ namespace Main_Menu
         {
             LoadedSimulation = null;
             loadButton.BackColor = UiHelpers.ErrorColor;
-            loadButton.Text = message;
+            loadButton.Text = message + " - try again";
         }
 
         private void closeDelayTimer_Tick(object sender, EventArgs e)
